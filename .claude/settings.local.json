@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx ruflo@latest *)",
+      "Bash(nvm version *)",
+      "Bash(nvm list *)",
+      "PowerShell(nvm *)",
+      "PowerShell(Get-Command *)",
+      "Bash(npx skills *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(Remove-Item -Force \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Http\\\\Kernel.php\")",
+      "Bash(Remove-Item -Force \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Console\\\\Kernel.php\")",
+      "Bash(Remove-Item -Force \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Providers\\\\RouteServiceProvider.php\")",
+      "Bash(Remove-Item -Force \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Providers\\\\EventServiceProvider.php\")",
+      "Bash(Remove-Item -Force \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Providers\\\\AuthServiceProvider.php\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/AhmedKhaledabdelkader/Inventory-Management/contents/store-management/app/Http/Middleware\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/AhmedKhaledabdelkader/Inventory-Management/main/store-management/bootstrap/app.php\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/AhmedKhaledabdelkader/Inventory-Management/main/store-management/routes/api.php\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/AhmedKhaledabdelkader/Inventory-Management/main/store-management/routes/apis/user.php\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/AhmedKhaledabdelkader/Inventory-Management/main/store-management/routes/apis/box.php\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Models\" -Name)",
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Http\\\\Controllers\\\\FrontControllers\\\\\" -Force)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\app\\\\Http\\\\Controllers\\\\FrontControllers\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"Directory\"}else{\"File\"}}} | Format-List)",
+      "Bash(Get-ChildItem -Path \"d:\\\\2b-source-code\\\\2b-academy-source-code\\\\tests\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)"
+    ]
+  }
+}

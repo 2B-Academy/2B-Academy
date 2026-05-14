@@ -1,0 +1,2442 @@
+openapi: 3.0.3
+info:
+  title: 2B Academy LMS API
+  description: |
+    RESTful API for the 2B Academy Learning Management System.
+    All endpoints are prefixed with `/api/v1`.
+
+    **Authentication:** Protected endpoints require a Bearer token obtained from the login endpoints.
+    Include it in all requests as: `Authorization: Bearer <token>`
+
+    **Response format:**
+    ```json
+    { "status": "success|error", "message": "...", "result": {} }
+    ```
+    Paginated responses also include a `meta` key:
+    ```json
+    { "meta": { "current_page": 1, "last_page": 5, "per_page": 20, "total": 100 } }
+    ```
+
+    **Translatable fields** return bilingual objects:
+    ```json
+    { "ar": "اسم عربي", "en": "English name" }
+    ```
+  version: 1.0.0
+  contact:
+    name: 2B Academy API
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+# ---------------------------------------------------------------------------
+# Security
+# ---------------------------------------------------------------------------
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  # -------------------------------------------------------------------------
+  # Reusable schemas
+  # -------------------------------------------------------------------------
+  schemas:
+
+    TranslatedString:
+      type: object
+      properties:
+        ar: { type: string }
+        en: { type: string }
+      example:
+        ar: "نص عربي"
+        en: "English text"
+
+    SuccessResponse:
+      type: object
+      properties:
+        status: { type: string, example: success }
+        message: { type: string }
+        result: {}
+
+    CreatedResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessResponse'
+
+    PaginatedResponse:
+      type: object
+      properties:
+        status: { type: string, example: success }
+        message: { type: string }
+        result: { type: array, items: {} }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            last_page:    { type: integer }
+            per_page:     { type: integer }
+            total:        { type: integer }
+
+    ErrorResponse:
+      type: object
+      properties:
+        status: { type: string, example: error }
+        error:  { type: string }
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    # -------------------------------------------------------------------------
+    # Domain schemas
+    # -------------------------------------------------------------------------
+
+    User:
+      type: object
+      properties:
+        id:              { type: integer }
+        name:            { type: string }
+        email:           { type: string, format: email }
+        phone:           { type: string, nullable: true }
+        system_id:       { type: string, nullable: true }
+        machine_code:    { type: string, nullable: true }
+        department_name: { type: string, nullable: true }
+        roles:           { type: array, items: { type: string } }
+        created_at:      { type: string, format: date-time }
+
+    Admin:
+      type: object
+      properties:
+        id:         { type: integer }
+        name:       { type: string }
+        email:      { type: string, format: email }
+        roles:      { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+
+    Category:
+      type: object
+      properties:
+        id:           { type: integer }
+        name:         { $ref: '#/components/schemas/TranslatedString' }
+        logo_url:     { type: string, format: uri }
+        active:       { type: boolean }
+        courses_count: { type: integer }
+
+    Instructor:
+      type: object
+      properties:
+        id:        { type: integer }
+        name:      { $ref: '#/components/schemas/TranslatedString' }
+        bio:       { $ref: '#/components/schemas/TranslatedString' }
+        job_title: { $ref: '#/components/schemas/TranslatedString' }
+        image_url: { type: string, format: uri, nullable: true }
+
+    Course:
+      type: object
+      properties:
+        id:                   { type: integer }
+        title:                { $ref: '#/components/schemas/TranslatedString' }
+        description:          { $ref: '#/components/schemas/TranslatedString' }
+        title_for_certificate: { $ref: '#/components/schemas/TranslatedString', nullable: true }
+        image_url:            { type: string, format: uri }
+        category:
+          type: object
+          properties:
+            id:   { type: integer }
+            name: { $ref: '#/components/schemas/TranslatedString' }
+        instructors:
+          type: array
+          items:
+            type: object
+            properties:
+              id:   { type: integer }
+              name: { $ref: '#/components/schemas/TranslatedString' }
+        course_type:       { type: string, enum: [online, offline] }
+        hours:             { type: integer }
+        level:             { type: string, nullable: true }
+        language:          { type: string, nullable: true }
+        certificate:       { type: boolean }
+        active:            { type: boolean }
+        is_evaluate:       { type: boolean }
+        allow_attendances: { type: boolean }
+        price:             { type: number }
+        currency:          { type: string }
+
+    CourseSection:
+      type: object
+      properties:
+        id:        { type: integer }
+        course_id: { type: integer }
+        name:      { $ref: '#/components/schemas/TranslatedString' }
+        order:     { type: integer }
+
+    CourseLecture:
+      type: object
+      properties:
+        id:         { type: integer }
+        section_id: { type: integer }
+        title:      { $ref: '#/components/schemas/TranslatedString' }
+        type:       { type: string, enum: [url, file] }
+        video_url:  { type: string, nullable: true }
+        order:      { type: integer }
+
+    CourseExam:
+      type: object
+      properties:
+        id:         { type: integer }
+        section_id: { type: integer }
+        title:      { $ref: '#/components/schemas/TranslatedString' }
+        degree:     { type: integer }
+        is_final:   { type: boolean }
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamQuestion'
+
+    ExamQuestion:
+      type: object
+      properties:
+        id:       { type: integer }
+        question: { $ref: '#/components/schemas/TranslatedString' }
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:         { type: integer }
+              answer:     { $ref: '#/components/schemas/TranslatedString' }
+              is_correct: { type: boolean }
+
+    EvaluationCategory:
+      type: object
+      properties:
+        id:   { type: integer }
+        name: { $ref: '#/components/schemas/TranslatedString' }
+
+    Evaluation:
+      type: object
+      properties:
+        id:                    { type: integer }
+        evaluation_category_id: { type: integer }
+        category:              { $ref: '#/components/schemas/EvaluationCategory' }
+        title:                 { $ref: '#/components/schemas/TranslatedString' }
+        type:                  { type: string, enum: [text, five, ten] }
+        is_required:           { type: boolean }
+
+    Form:
+      type: object
+      properties:
+        id:         { type: integer }
+        title:      { $ref: '#/components/schemas/TranslatedString' }
+        duration:   { type: integer, nullable: true }
+        full_mark:  { type: integer, nullable: true }
+        active:     { type: boolean }
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormQuestion'
+
+    FormQuestion:
+      type: object
+      properties:
+        id:       { type: integer }
+        type:     { type: string, enum: [text, radio, yes_no] }
+        question: { $ref: '#/components/schemas/TranslatedString' }
+        answers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:     { type: integer }
+              answer: { $ref: '#/components/schemas/TranslatedString' }
+
+    PublicNotification:
+      type: object
+      properties:
+        id:         { type: integer }
+        title:      { $ref: '#/components/schemas/TranslatedString' }
+        body:       { $ref: '#/components/schemas/TranslatedString' }
+        for_public: { type: boolean }
+        users:      { type: array, items: { type: string }, description: "user_codes of targeted users" }
+        created_at: { type: string, format: date-time }
+
+    Article:
+      type: object
+      properties:
+        id:          { type: integer }
+        title:       { $ref: '#/components/schemas/TranslatedString' }
+        description: { $ref: '#/components/schemas/TranslatedString' }
+        slug:        { type: string }
+        type:        { type: string, enum: [news, blogs, event] }
+        image_url:   { type: string, format: uri, nullable: true }
+        is_home:     { type: boolean }
+        active:      { type: boolean }
+        created_at:  { type: string, format: date-time }
+
+    About:
+      type: object
+      properties:
+        id:      { type: integer, nullable: true }
+        about:   { $ref: '#/components/schemas/TranslatedString' }
+        mission: { $ref: '#/components/schemas/TranslatedString' }
+        vision:  { $ref: '#/components/schemas/TranslatedString' }
+        goals:   { $ref: '#/components/schemas/TranslatedString' }
+
+    Testimonial:
+      type: object
+      properties:
+        id:          { type: integer }
+        name:        { $ref: '#/components/schemas/TranslatedString' }
+        description: { $ref: '#/components/schemas/TranslatedString' }
+        image_url:   { type: string, format: uri, nullable: true }
+        active:      { type: boolean }
+
+    Role:
+      type: object
+      properties:
+        id:          { type: integer }
+        name:        { type: string }
+        permissions: { type: array, items: { type: string } }
+
+    Certificate:
+      type: object
+      properties:
+        type:         { type: string, enum: [exam, evaluation] }
+        user:
+          type: object
+          properties:
+            id:              { type: integer }
+            name:            { type: string }
+            machine_code:    { type: string, nullable: true }
+            department_name: { type: string, nullable: true }
+        course:
+          type: object
+          properties:
+            id:                    { type: integer }
+            title:                 { $ref: '#/components/schemas/TranslatedString' }
+            title_for_certificate: { $ref: '#/components/schemas/TranslatedString', nullable: true }
+        user_degree:  { type: number, nullable: true }
+        total_degree: { type: number, nullable: true }
+        created_at:   { type: string, format: date-time }
+
+    CourseAssignment:
+      type: object
+      properties:
+        id:         { type: integer }
+        course_id:  { type: integer }
+        title:      { type: string }
+        file_url:   { type: string, format: uri }
+        created_at: { type: string, format: date-time }
+
+    UserCourseAssignment:
+      type: object
+      properties:
+        id:            { type: integer }
+        assignment:    { $ref: '#/components/schemas/CourseAssignment' }
+        user:
+          type: object
+          properties:
+            id:              { type: integer }
+            name:            { type: string }
+            machine_code:    { type: string, nullable: true }
+            department_name: { type: string, nullable: true }
+        user_file_url: { type: string, format: uri, nullable: true }
+        feedback:      { type: string, nullable: true }
+        score:         { type: string, nullable: true }
+        created_at:    { type: string, format: date-time }
+
+    CourseSession:
+      type: object
+      properties:
+        id:           { type: integer }
+        course_id:    { type: integer }
+        section:
+          type: object
+          properties:
+            id:   { type: integer }
+            name: { $ref: '#/components/schemas/TranslatedString' }
+        title:        { type: string }
+        session_date: { type: string, format: date, nullable: true }
+        time_from:    { type: string, nullable: true }
+        time_to:      { type: string, nullable: true }
+        location:     { type: string, nullable: true }
+        created_at:   { type: string, format: date-time }
+
+    Enrollment:
+      type: object
+      properties:
+        id:         { type: integer }
+        user:
+          type: object
+          properties:
+            id:              { type: integer }
+            name:            { type: string }
+            machine_code:    { type: string, nullable: true }
+            department_name: { type: string, nullable: true }
+        group:
+          type: object
+          nullable: true
+          properties:
+            id:   { type: integer }
+            name: { $ref: '#/components/schemas/TranslatedString' }
+        created_at: { type: string, format: date-time }
+
+    DashboardStats:
+      type: object
+      properties:
+        courses:              { type: integer }
+        users:                { type: integer }
+        instructors:          { type: integer }
+        articles:             { type: integer }
+        ratings:              { type: integer }
+        lecture_questions:    { type: integer }
+        unanswered_questions: { type: integer }
+        user_assignments:     { type: integer }
+
+  # -------------------------------------------------------------------------
+  # Reusable parameters
+  # -------------------------------------------------------------------------
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, default: 1 }
+    PerPageParam:
+      name: per_page
+      in: query
+      schema: { type: integer, default: 20 }
+    SearchParam:
+      name: search
+      in: query
+      schema: { type: string }
+
+  # -------------------------------------------------------------------------
+  # Reusable responses
+  # -------------------------------------------------------------------------
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Insufficient role
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorResponse' }
+
+# =============================================================================
+# Tags
+# =============================================================================
+tags:
+  - { name: Auth,               description: "User & admin authentication" }
+  - { name: Categories,         description: "Course category management" }
+  - { name: Courses,            description: "Course CRUD" }
+  - { name: Course Sections,    description: "Sections within a course" }
+  - { name: Course Lectures,    description: "Lectures within a course" }
+  - { name: Course Exams,       description: "Exams with questions and answers" }
+  - { name: Course Assignments, description: "Admin assignments + user submissions" }
+  - { name: Course Sessions,    description: "Offline session scheduling" }
+  - { name: Enrollments,        description: "Offline course user enrollment" }
+  - { name: Users,              description: "User management (admin)" }
+  - { name: Instructors,        description: "Instructor management" }
+  - { name: Evaluation Categories, description: "Evaluation category management" }
+  - { name: Evaluations,        description: "Evaluation CRUD" }
+  - { name: Forms,              description: "Form and question management" }
+  - { name: Notifications,      description: "Public notification broadcasts" }
+  - { name: Articles,           description: "News, blogs, and events" }
+  - { name: CMS,                description: "About page and testimonials" }
+  - { name: Roles,              description: "Spatie role management" }
+  - { name: Admins,             description: "Admin account management" }
+  - { name: Dashboard,          description: "Platform statistics" }
+  - { name: Certificates,       description: "User certificate listing" }
+  - { name: Progress,           description: "User course progress reporting" }
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+
+  # ===========================================================================
+  # AUTH
+  # ===========================================================================
+
+  /auth/user/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: object
+                        properties:
+                          token: { type: string }
+                          user:  { $ref: '#/components/schemas/User' }
+        '401': { description: Invalid credentials }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/user/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current user session
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/user/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all user sessions
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: All sessions invalidated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/user/me:
+    get:
+      tags: [Auth]
+      summary: Get authenticated user profile
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/admin/login:
+    post:
+      tags: [Auth]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: object
+                        properties:
+                          token: { type: string }
+                          admin: { $ref: '#/components/schemas/Admin' }
+        '401': { description: Invalid credentials }
+
+  /auth/admin/logout:
+    post:
+      tags: [Auth]
+      summary: Admin logout
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/admin/me:
+    get:
+      tags: [Auth]
+      summary: Get authenticated admin profile
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Admin profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Admin' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ===========================================================================
+  # CATEGORIES
+  # ===========================================================================
+
+  /categories/active:
+    get:
+      tags: [Categories]
+      summary: List all active categories (public)
+      responses:
+        '200':
+          description: Active categories
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items: { $ref: '#/components/schemas/Category' }
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: Paginated category list (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - name: active
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Paginated categories
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Categories]
+      summary: Create category (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, logo]
+              properties:
+                name:   { type: string }
+                logo:   { type: string, format: binary }
+                active: { type: boolean }
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CreatedResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Category' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /categories/{category}:
+    parameters:
+      - name: category
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Categories]
+      summary: Get single category (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Category detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Categories]
+      summary: Update category (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:   { type: string }
+                logo:   { type: string, format: binary }
+                active: { type: boolean }
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Category' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Categories]
+      summary: Delete category (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # COURSES
+  # ===========================================================================
+
+  /courses:
+    get:
+      tags: [Courses]
+      summary: Paginated course list (any authenticated user)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - name: category_id
+          in: query
+          schema: { type: integer }
+        - name: course_type
+          in: query
+          schema: { type: string, enum: [online, offline] }
+      responses:
+        '200':
+          description: Paginated courses
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Courses]
+      summary: Create course (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, description, category_id, hours, certificate, image, instructors]
+              properties:
+                title:                 { type: string }
+                description:           { type: string }
+                title_for_certificate: { type: string }
+                category_id:           { type: integer }
+                course_type:           { type: string, enum: [online, offline] }
+                hours:                 { type: integer }
+                language:              { type: string }
+                level:                 { type: string }
+                certificate:           { type: boolean }
+                active:                { type: boolean }
+                is_evaluate:           { type: boolean }
+                allow_attendances:     { type: boolean }
+                price:                 { type: number }
+                currency:              { type: string }
+                image:                 { type: string, format: binary }
+                intro_video:           { type: string }
+                instructors:
+                  type: array
+                  items: { type: integer }
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CreatedResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Course' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Courses]
+      summary: Get single course (any authenticated user)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/Course' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Courses]
+      summary: Update course (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:       { type: string }
+                description: { type: string }
+                category_id: { type: integer }
+                hours:       { type: integer }
+                certificate: { type: boolean }
+                image:       { type: string, format: binary }
+                instructors:
+                  type: array
+                  items: { type: integer }
+      responses:
+        '200': { description: Course updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Courses]
+      summary: Delete course (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # COURSE SECTIONS
+  # ===========================================================================
+
+  /courses/{course}/sections:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Sections]
+      summary: List sections for a course (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Section list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items: { $ref: '#/components/schemas/CourseSection' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Course Sections]
+      summary: Create a single section (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:  { type: string, description: "Arabic name (string, not object)" }
+                order: { type: integer }
+      responses:
+        '201': { description: Section created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/sections/sync:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [Course Sections]
+      summary: Bulk sync sections — replaces all existing sections (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sections]
+              properties:
+                sections:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      id:    { type: integer, nullable: true, description: "Existing ID to update; null to create" }
+                      name:  { type: string }
+                      order: { type: integer }
+      responses:
+        '200': { description: Sections synced }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/sections/{section}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: section
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      tags: [Course Sections]
+      summary: Update a section (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:  { type: string }
+                order: { type: integer }
+      responses:
+        '200': { description: Section updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Sections]
+      summary: Delete a section (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # COURSE LECTURES
+  # ===========================================================================
+
+  /courses/{course}/lectures:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Lectures]
+      summary: List lectures grouped by section (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Lectures grouped by section }
+    post:
+      tags: [Course Lectures]
+      summary: Create lecture (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [section_id, title, type]
+              properties:
+                section_id: { type: integer }
+                title:      { type: string }
+                type:       { type: string, enum: [url, file] }
+                video:      { type: string, format: binary, description: "Required when type=file" }
+                intro_video: { type: string, description: "Required when type=url" }
+                order:      { type: integer }
+      responses:
+        '201': { description: Lecture created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/lectures/{lecture}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: lecture
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      tags: [Course Lectures]
+      summary: Update lecture (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                section_id: { type: integer }
+                title:      { type: string }
+                type:       { type: string, enum: [url, file] }
+                video:      { type: string, format: binary }
+      responses:
+        '200': { description: Lecture updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Lectures]
+      summary: Delete lecture (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # COURSE EXAMS
+  # ===========================================================================
+
+  /courses/{course}/exams:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Exams]
+      summary: List exams for a course (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Exam list }
+    post:
+      tags: [Course Exams]
+      summary: Create exam with questions and answers (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section_id, title, degree, questions]
+              properties:
+                section_id: { type: integer }
+                title:      { type: string }
+                degree:     { type: integer }
+                is_final:   { type: boolean }
+                questions:
+                  type: array
+                  items:
+                    type: object
+                    required: [question, answers]
+                    properties:
+                      question: { type: string }
+                      answers:
+                        type: array
+                        items:
+                          type: object
+                          required: [answer, is_correct]
+                          properties:
+                            answer:     { type: string }
+                            is_correct: { type: boolean }
+      responses:
+        '201': { description: Exam created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/exams/{exam}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: exam
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Exams]
+      summary: Get exam with questions (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Exam detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Course Exams]
+      summary: Update exam (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:    { type: string }
+                degree:   { type: integer }
+                is_final: { type: boolean }
+      responses:
+        '200': { description: Exam updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Exams]
+      summary: Delete exam (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # COURSE ASSIGNMENTS
+  # ===========================================================================
+
+  /courses/{course}/assignments:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Assignments]
+      summary: List assignments for a course (admin + enrolled users)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Assignment list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items: { $ref: '#/components/schemas/CourseAssignment' }
+    post:
+      tags: [Course Assignments]
+      summary: Create assignment (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, file]
+              properties:
+                title: { type: string }
+                file:  { type: string, format: binary }
+      responses:
+        '201': { description: Assignment created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/assignments/{assignment}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: assignment
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      tags: [Course Assignments]
+      summary: Update assignment (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                file:  { type: string, format: binary }
+      responses:
+        '200': { description: Assignment updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Assignments]
+      summary: Delete assignment (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /courses/{course}/assignments/{assignment}/submissions:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: assignment
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Assignments]
+      summary: List user submissions for an assignment (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Paginated submissions }
+
+  /courses/{course}/assignments/{assignment}/submissions/{submission}/review:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: assignment
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: submission
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      tags: [Course Assignments]
+      summary: Review a user submission — add feedback and score (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback: { type: string }
+                score:    { type: string }
+      responses:
+        '200': { description: Review saved }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /courses/{course}/assignments/{assignment}/submit:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: assignment
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [Course Assignments]
+      summary: Submit assignment file (user)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: Submission saved }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/assignments/{assignment}/my-submission:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: assignment
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Assignments]
+      summary: View own submission for an assignment (user)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Own submission or null }
+
+  # ===========================================================================
+  # COURSE SESSIONS (OFFLINE)
+  # ===========================================================================
+
+  /courses/{course}/sessions:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Course Sessions]
+      summary: List sessions for a course (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: section_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: Paginated sessions }
+    post:
+      tags: [Course Sessions]
+      summary: Create session (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section_id, title]
+              properties:
+                section_id:   { type: integer }
+                title:        { type: string }
+                session_date: { type: string, format: date }
+                time_from:    { type: string, example: "09:00" }
+                time_to:      { type: string, example: "11:00" }
+                location:     { type: string }
+      responses:
+        '201': { description: Session created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/sessions/{session}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: session
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      tags: [Course Sessions]
+      summary: Update session (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                section_id:   { type: integer }
+                title:        { type: string }
+                session_date: { type: string, format: date }
+                time_from:    { type: string }
+                time_to:      { type: string }
+                location:     { type: string }
+      responses:
+        '200': { description: Session updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Sessions]
+      summary: Delete session (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # ENROLLMENTS (OFFLINE)
+  # ===========================================================================
+
+  /courses/{course}/enrollments:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Enrollments]
+      summary: List enrolled users for an offline course (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: group_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: Paginated enrollments }
+    post:
+      tags: [Enrollments]
+      summary: Enroll users in a group (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id, user_ids]
+              properties:
+                group_id:  { type: integer }
+                user_ids:
+                  type: array
+                  items: { type: integer }
+      responses:
+        '200': { description: Users enrolled }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /courses/{course}/enrollments/{enrollment}:
+    parameters:
+      - name: course
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: enrollment
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      tags: [Enrollments]
+      summary: Remove user enrollment (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Enrollment removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # USERS
+  # ===========================================================================
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Paginated user list (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated users }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Users]
+      summary: Create user (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:                  { type: string }
+                email:                 { type: string, format: email }
+                password:              { type: string, minLength: 8 }
+                password_confirmation: { type: string }
+                phone:                 { type: string }
+                machine_code:          { type: string }
+                department_name:       { type: string }
+      responses:
+        '201': { description: User created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /users/{user}:
+    parameters:
+      - name: user
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Users]
+      summary: Get user (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: User detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Users]
+      summary: Update user (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:  { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+      responses:
+        '200': { description: User updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Users]
+      summary: Delete user (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # INSTRUCTORS
+  # ===========================================================================
+
+  /instructors/all:
+    get:
+      tags: [Instructors]
+      summary: Full instructor list for dropdowns (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: All instructors }
+
+  /instructors:
+    get:
+      tags: [Instructors]
+      summary: Paginated instructor list (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated instructors }
+    post:
+      tags: [Instructors]
+      summary: Create instructor (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:      { type: string }
+                bio:       { type: string }
+                job_title: { type: string }
+                image:     { type: string, format: binary }
+      responses:
+        '201': { description: Instructor created }
+
+  /instructors/{instructor}:
+    parameters:
+      - name: instructor
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Instructors]
+      summary: Get instructor (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Instructor detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Instructors]
+      summary: Update instructor (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:      { type: string }
+                bio:       { type: string }
+                job_title: { type: string }
+                image:     { type: string, format: binary }
+      responses:
+        '200': { description: Instructor updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Instructors]
+      summary: Delete instructor (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # EVALUATION CATEGORIES
+  # ===========================================================================
+
+  /evaluation-categories/all:
+    get:
+      tags: [Evaluation Categories]
+      summary: Full list for dropdowns (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: All evaluation categories }
+
+  /evaluation-categories:
+    get:
+      tags: [Evaluation Categories]
+      summary: Paginated list (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated evaluation categories }
+    post:
+      tags: [Evaluation Categories]
+      summary: Create evaluation category (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+      responses:
+        '201': { description: Created }
+
+  /evaluation-categories/{evaluationCategory}:
+    parameters:
+      - name: evaluationCategory
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Evaluation Categories]
+      summary: Get evaluation category (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Evaluation Categories]
+      summary: Update evaluation category (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: object
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Evaluation Categories]
+      summary: Delete evaluation category (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+
+  # ===========================================================================
+  # EVALUATIONS
+  # ===========================================================================
+
+  /evaluations:
+    get:
+      tags: [Evaluations]
+      summary: Paginated evaluations (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - name: evaluation_category_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: Paginated evaluations }
+    post:
+      tags: [Evaluations]
+      summary: Create evaluation (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [evaluation_category_id, type, title]
+              properties:
+                evaluation_category_id: { type: integer }
+                type:                   { type: string, enum: [text, five, ten] }
+                title:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                is_required: { type: boolean }
+      responses:
+        '201': { description: Created }
+
+  /evaluations/{evaluation}:
+    parameters:
+      - name: evaluation
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Evaluations]
+      summary: Get evaluation (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Evaluations]
+      summary: Update evaluation (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:        { type: string, enum: [text, five, ten] }
+                title:       { type: object }
+                is_required: { type: boolean }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Evaluations]
+      summary: Delete evaluation (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+
+  # ===========================================================================
+  # FORMS
+  # ===========================================================================
+
+  /forms:
+    get:
+      tags: [Forms]
+      summary: Paginated forms (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Paginated forms }
+    post:
+      tags: [Forms]
+      summary: Create form (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                duration:  { type: integer }
+                full_mark: { type: integer }
+                active:    { type: boolean }
+      responses:
+        '201': { description: Form created }
+
+  /forms/{form}:
+    parameters:
+      - name: form
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Forms]
+      summary: Get form with questions (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Form detail with questions }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Forms]
+      summary: Update form (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:     { type: object }
+                duration:  { type: integer }
+                full_mark: { type: integer }
+                active:    { type: boolean }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Forms]
+      summary: Delete form (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+
+  /forms/{form}/questions:
+    parameters:
+      - name: form
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      tags: [Forms]
+      summary: Add question to form (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, question]
+              properties:
+                type:     { type: string, enum: [text, radio, yes_no] }
+                question:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                answers:
+                  type: array
+                  description: "Required when type is radio or yes_no"
+                  items:
+                    type: object
+                    properties:
+                      answer:
+                        type: object
+                        properties:
+                          ar: { type: string }
+                          en: { type: string }
+      responses:
+        '201': { description: Question added }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /forms/{form}/questions/{question}:
+    parameters:
+      - name: form
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: question
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      tags: [Forms]
+      summary: Remove question from form (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Question removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # NOTIFICATIONS
+  # ===========================================================================
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Paginated notifications (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Paginated notifications }
+    post:
+      tags: [Notifications]
+      summary: Send notification (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                body:
+                  type: object
+                  required: [ar]
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                for_public:  { type: boolean, description: "true = broadcast to all users" }
+                user_codes:
+                  type: array
+                  description: "Required when for_public is false"
+                  items: { type: string }
+      responses:
+        '201': { description: Notification sent and stored }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /notifications/{notification}:
+    parameters:
+      - name: notification
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Notifications]
+      summary: Get notification detail with targeted users (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Notification detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # ARTICLES
+  # ===========================================================================
+
+  /articles:
+    get:
+      tags: [Articles]
+      summary: Paginated articles (public)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - name: type
+          in: query
+          schema: { type: string, enum: [news, blogs, event] }
+      responses:
+        '200': { description: Paginated articles }
+    post:
+      tags: [Articles]
+      summary: Create article (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title, description, type, slug]
+              properties:
+                title:
+                  type: object
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                description:
+                  type: object
+                  properties:
+                    ar: { type: string }
+                    en: { type: string }
+                type:    { type: string, enum: [news, blogs, event] }
+                slug:    { type: string }
+                image:   { type: string, format: binary }
+                is_home: { type: boolean }
+                active:  { type: boolean }
+      responses:
+        '201': { description: Article created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /articles/{article}:
+    parameters:
+      - name: article
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Articles]
+      summary: Get article (public)
+      responses:
+        '200': { description: Article detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Articles]
+      summary: Update article (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:       { type: object }
+                description: { type: object }
+                type:        { type: string }
+                slug:        { type: string }
+                image:       { type: string, format: binary }
+                is_home:     { type: boolean }
+                active:      { type: boolean }
+      responses:
+        '200': { description: Article updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Articles]
+      summary: Delete article (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # CMS
+  # ===========================================================================
+
+  /about:
+    get:
+      tags: [CMS]
+      summary: Get About page content (public)
+      responses:
+        '200':
+          description: About content
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result: { $ref: '#/components/schemas/About' }
+    put:
+      tags: [CMS]
+      summary: Update About page content (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                about:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+                mission:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+                vision:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+                goals:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+      responses:
+        '200': { description: About updated }
+
+  /testimonials/active:
+    get:
+      tags: [CMS]
+      summary: List active testimonials (public)
+      responses:
+        '200': { description: Active testimonials }
+
+  /testimonials:
+    get:
+      tags: [CMS]
+      summary: Paginated testimonials (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200': { description: Paginated testimonials }
+    post:
+      tags: [CMS]
+      summary: Create testimonial (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, description]
+              properties:
+                name:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+                description:
+                  type: object
+                  properties: { ar: { type: string }, en: { type: string } }
+                image:  { type: string, format: binary }
+                active: { type: boolean }
+      responses:
+        '201': { description: Testimonial created }
+
+  /testimonials/{testimonial}:
+    parameters:
+      - name: testimonial
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [CMS]
+      summary: Get testimonial (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Testimonial detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [CMS]
+      summary: Update testimonial (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:        { type: object }
+                description: { type: object }
+                image:       { type: string, format: binary }
+                active:      { type: boolean }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [CMS]
+      summary: Delete testimonial (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+
+  # ===========================================================================
+  # ROLES
+  # ===========================================================================
+
+  /roles/all:
+    get:
+      tags: [Roles]
+      summary: Full role list for dropdowns (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: All roles }
+
+  /roles:
+    get:
+      tags: [Roles]
+      summary: Paginated roles (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated roles }
+    post:
+      tags: [Roles]
+      summary: Create role (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:        { type: string }
+                permissions:
+                  type: array
+                  items: { type: string }
+      responses:
+        '201': { description: Role created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /roles/{role}:
+    parameters:
+      - name: role
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Roles]
+      summary: Get role with permissions (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Role detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Roles]
+      summary: Update role name and sync permissions (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:        { type: string }
+                permissions:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200': { description: Role updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Roles]
+      summary: Delete role (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # ADMINS
+  # ===========================================================================
+
+  /admins:
+    get:
+      tags: [Admins]
+      summary: Paginated admin list (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+      responses:
+        '200': { description: Paginated admins }
+    post:
+      tags: [Admins]
+      summary: Create admin account (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation, role]
+              properties:
+                name:                  { type: string }
+                email:                 { type: string, format: email }
+                password:              { type: string, minLength: 8 }
+                password_confirmation: { type: string }
+                role:                  { type: string, description: "Role name from roles table" }
+      responses:
+        '201': { description: Admin created }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /admins/{admin}:
+    parameters:
+      - name: admin
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      tags: [Admins]
+      summary: Get admin (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Admin detail }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admins]
+      summary: Update admin (admin)
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, role]
+              properties:
+                name:                  { type: string }
+                email:                 { type: string, format: email }
+                password:              { type: string, minLength: 8, nullable: true }
+                password_confirmation: { type: string }
+                role:                  { type: string }
+      responses:
+        '200': { description: Admin updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Admins]
+      summary: Delete admin (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ===========================================================================
+  # DASHBOARD
+  # ===========================================================================
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Platform statistics (admin)
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: Dashboard statistics and top courses
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: object
+                        properties:
+                          statistics:  { $ref: '#/components/schemas/DashboardStats' }
+                          top_courses:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:          { type: integer }
+                                title:       { $ref: '#/components/schemas/TranslatedString' }
+                                users_count: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ===========================================================================
+  # CERTIFICATES
+  # ===========================================================================
+
+  /certificates:
+    get:
+      tags: [Certificates]
+      summary: List all earned certificates (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: course_id
+          in: query
+          schema: { type: integer }
+          description: Filter by course
+      responses:
+        '200':
+          description: Paginated certificates (merged exam + evaluation certificates)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items: { $ref: '#/components/schemas/Certificate' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ===========================================================================
+  # PROGRESS
+  # ===========================================================================
+
+  /progress:
+    get:
+      tags: [Progress]
+      summary: User course progress report (admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+        - name: course_id
+          in: query
+          schema: { type: integer }
+        - name: group_id
+          in: query
+          schema: { type: integer }
+        - name: user_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated progress records
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            user:
+                              type: object
+                              properties:
+                                id:              { type: integer }
+                                name:            { type: string }
+                                machine_code:    { type: string }
+                                department_name: { type: string }
+                            course:
+                              type: object
+                              properties:
+                                id:          { type: integer }
+                                title:       { type: string }
+                                course_type: { type: string }
+                                for_public:  { type: boolean }
+                            group_name:   { type: string, nullable: true }
+                            user_degree:  { type: number, nullable: true }
+                            total_degree: { type: number, nullable: true }
+                            progress:     { type: integer, description: "0 or 100" }
+        '403': { $ref: '#/components/responses/Forbidden' }
