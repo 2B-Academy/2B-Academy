@@ -12,7 +12,7 @@ class FormResource extends JsonResource
         return [
             'id'        => $this->id,
             'uuid'      => $this->uuid,
-            'title'     => $this->getTranslations('title'),
+            'title'     => $this->getTranslation('title', app()->getLocale()),
             'duration'  => $this->duration,
             'full_mark' => $this->full_mark,
             'active'    => (bool) $this->active,

@@ -84,4 +84,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(Attendance::class, 'user_id');
     }
+
+    /**
+     * The HR-sourced job title held by this learner. Nullable — a user
+     * isn't required to have a title (e.g. external learners), and the
+     * FK is set to `null` if the catalogue row is deleted (see the
+     * `2026_05_25_140000_add_job_title_id_to_users_table` migration).
+     */
+    public function jobTitle()
+    {
+        return $this->belongsTo(JobTitle::class, 'job_title_id');
+    }
 }

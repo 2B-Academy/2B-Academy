@@ -17,7 +17,7 @@ class RoleMiddleware
         if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'error'  => __('messages.unauthenticated'),
+                'message' => __('messages.unauthenticated'),
             ], 401);
         }
 
@@ -35,7 +35,7 @@ class RoleMiddleware
 
         return response()->json([
             'status' => 'error',
-            'error'  => __('messages.forbidden'),
+                'message' => __('messages.forbidden'),
         ], 403);
     }
 }

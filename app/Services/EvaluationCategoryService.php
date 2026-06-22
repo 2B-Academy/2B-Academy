@@ -35,12 +35,12 @@ class EvaluationCategoryService
 
     public function update(EvaluationCategory $category, array $data): EvaluationCategory
     {
-        $this->repo->update($category->id, $data);
-        return $category->fresh();
+        /** @var EvaluationCategory */
+        return $this->repo->update($category, $data);
     }
 
     public function delete(EvaluationCategory $category): void
     {
-        $this->repo->delete($category->id);
+        $this->repo->delete($category);
     }
 }

@@ -13,9 +13,15 @@ class UserService
         private readonly UserRepositoryInterface $userRepository,
     ) {}
 
-    public function list(int $perPage = 20, ?string $search = null): LengthAwarePaginator
-    {
-        return $this->userRepository->paginateWithSearch($perPage, $search);
+    public function list(
+        int     $perPage     = 20,
+        ?string $search      = null,
+        ?string $role        = null,
+        ?string $learnerType = null,
+    ): LengthAwarePaginator {
+        return $this->userRepository->paginateWithSearch(
+            $perPage, $search, $role, $learnerType,
+        );
     }
 
     public function findOrFail(int $id): User
@@ -25,14 +31,7 @@ class UserService
 
     public function getUserWithActivity(int $id): User
     {
-        $user = $this->userRepository->findOrFail($id);
-
-        return $user->load([
-            'courses.category:id,name',
-            'ratings.course:id,title',
-            'exams.course:id,title,certificate',
-            'exams.exam:id,title,degree,is_final',
-        ]);
+        return $this->userRepository->findWithActivity($id);
     }
 
     /**
@@ -52,6 +51,11 @@ class UserService
         $data['machine_code'] = $machineCode;
 
         return $this->userRepository->create($data);
+    }
+
+    public function update(User $user, array $data): User
+    {
+        return $this->userRepository->update($user, $data);
     }
 
     public function delete(User $user): bool

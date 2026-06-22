@@ -16,7 +16,7 @@ class AuthenticationMiddleware
         if (!$token) {
             return response()->json([
                 'status' => 'error',
-                'error'  => __('messages.unauthenticated'),
+                'message' => __('messages.unauthenticated'),
             ], 401);
         }
 
@@ -25,7 +25,7 @@ class AuthenticationMiddleware
         if (!$accessToken) {
             return response()->json([
                 'status' => 'error',
-                'error'  => __('messages.unauthenticated'),
+                'message' => __('messages.unauthenticated'),
             ], 401);
         }
 
@@ -33,7 +33,7 @@ class AuthenticationMiddleware
             $accessToken->delete();
             return response()->json([
                 'status' => 'error',
-                'error'  => __('messages.token_expired'),
+                'message' => __('messages.token_expired'),
             ], 401);
         }
 
@@ -42,7 +42,7 @@ class AuthenticationMiddleware
         if (!$tokenable) {
             return response()->json([
                 'status' => 'error',
-                'error'  => __('messages.unauthenticated'),
+                'message' => __('messages.unauthenticated'),
             ], 401);
         }
 

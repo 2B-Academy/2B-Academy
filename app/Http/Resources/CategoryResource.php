@@ -11,7 +11,7 @@ class CategoryResource extends JsonResource
     {
         return [
             'id'           => $this->id,
-            'name'         => $this->getTranslations('name'),
+            'name'         => $this->getTranslation('name', app()->getLocale()),
             'logo'         => $this->logo ? $this->getFileUrl($this->logo) : null,
             'active'       => (bool) $this->active,
             'courses_count'=> $this->whenCounted('courses'),

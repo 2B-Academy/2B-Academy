@@ -19,6 +19,9 @@ Route::middleware('auth.user')->group(function () {
     // Lectures — read (grouped by section)
     Route::get('courses/{course}/lectures', [CourseLectureController::class, 'index']);
 
+    // Modules — flat list (powers admin "Content" tab in course detail)
+    Route::get('courses/{course}/modules',  [CourseLectureController::class, 'indexFlat']);
+
     // Exams — read
     Route::get('courses/{course}/exams',         [CourseExamController::class, 'index']);
     Route::get('courses/{course}/exams/{exam}',  [CourseExamController::class, 'show']);
@@ -33,6 +36,8 @@ Route::middleware(['auth.user', 'role:Admin'])->group(function () {
     Route::delete('courses/{course}/sections/{section}',   [CourseSectionController::class, 'destroy']);
 
     // Lectures — write
+    // NB: /lectures/upload must come BEFORE /{lecture} to avoid route binding.
+    Route::post('courses/{course}/lectures/upload',        [CourseLectureController::class, 'uploadFile']);
     Route::post('courses/{course}/lectures',               [CourseLectureController::class, 'store']);
     Route::put('courses/{course}/lectures/{lecture}',      [CourseLectureController::class, 'update']);
     Route::delete('courses/{course}/lectures/{lecture}',   [CourseLectureController::class, 'destroy']);

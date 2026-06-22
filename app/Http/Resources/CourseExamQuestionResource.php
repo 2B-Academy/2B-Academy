@@ -11,10 +11,10 @@ class CourseExamQuestionResource extends JsonResource
     {
         return [
             'id'       => $this->id,
-            'question' => $this->getTranslations('question'),
+            'question' => $this->getTranslation('question', app()->getLocale()),
             'answers'  => $this->whenLoaded('answers', fn () => $this->answers->map(fn ($a) => [
                 'id'         => $a->id,
-                'answer'     => $a->getTranslations('answer'),
+                'answer'     => $a->getTranslation('answer', app()->getLocale()),
                 'is_correct' => (bool) $a->is_correct,
             ])),
         ];

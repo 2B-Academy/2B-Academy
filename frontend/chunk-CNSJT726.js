@@ -1,0 +1,1 @@
+import"./chunk-4CLCTAJ7.js";var o=[{path:"",loadComponent:()=>import("./chunk-RY4AHRBV.js").then(t=>t.QualificationListComponent),title:"Qualifications \u2014 2B Academy"}];export{o as QUALIFICATIONS_ROUTES};

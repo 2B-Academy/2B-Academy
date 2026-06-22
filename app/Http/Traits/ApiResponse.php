@@ -26,9 +26,13 @@ trait ApiResponse
         return $this->success($message ?: __('messages.deleted'));
     }
 
-    protected function error(string $message, int $status = Response::HTTP_BAD_REQUEST): JsonResponse
+    protected function error(string $message, int $status = Response::HTTP_BAD_REQUEST, array $errors = []): JsonResponse
     {
-        return response()->json(['status' => 'error', 'error' => $message], $status);
+        $payload = ['status' => 'error', 'message' => $message];
+        if ($errors !== []) {
+            $payload['errors'] = $errors;
+        }
+        return response()->json($payload, $status);
     }
 
     protected function notFound(string $message = ''): JsonResponse
@@ -48,16 +52,19 @@ trait ApiResponse
 
     protected function paginated(string $message, mixed $resource): JsonResponse
     {
-        $paginatedData = $resource->resource;
+        $paginator = $resource instanceof \Illuminate\Http\Resources\Json\ResourceCollection
+            ? $resource->resource
+            : $resource;
+
         return response()->json([
             'status'  => 'success',
             'message' => $message,
             'result'  => $resource,
             'meta'    => [
-                'current_page' => $paginatedData->currentPage(),
-                'last_page'    => $paginatedData->lastPage(),
-                'per_page'     => $paginatedData->perPage(),
-                'total'        => $paginatedData->total(),
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'per_page'     => $paginator->perPage(),
+                'total'        => $paginator->total(),
             ],
         ]);
     }

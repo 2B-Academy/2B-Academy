@@ -11,10 +11,10 @@ class AboutResource extends JsonResource
     {
         return [
             'id'      => $this->id,
-            'about'   => $this->getTranslations('about'),
-            'mission' => $this->getTranslations('mission'),
-            'vision'  => $this->getTranslations('vision'),
-            'goals'   => $this->getTranslations('goals'),
+            'about'   => $this->getTranslation('about', app()->getLocale()),
+            'mission' => $this->getTranslation('mission', app()->getLocale()),
+            'vision'  => $this->getTranslation('vision', app()->getLocale()),
+            'goals'   => $this->getTranslation('goals', app()->getLocale()),
             'image'   => $this->image ? $this->getFileUrl($this->image) : null,
         ];
     }

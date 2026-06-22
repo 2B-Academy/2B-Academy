@@ -61,6 +61,14 @@
         </li>
 
         <li>
+            <a href="{{ route('admin.qualification-skills.index')  }}">
+                <div class="parent-icon"><i class="lni lni-graduation"></i>
+                </div>
+                <div class="menu-title">{{ __('text.qualification_skills') }}</div>
+            </a>
+        </li>
+
+        <li>
             <a href="javascript:;" class="has-arrow">
                 <div class="parent-icon"><i class="lni lni-video"></i>
                 </div>

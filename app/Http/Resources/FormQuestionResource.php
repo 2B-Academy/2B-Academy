@@ -12,10 +12,10 @@ class FormQuestionResource extends JsonResource
         return [
             'id'       => $this->id,
             'type'     => $this->type,
-            'question' => $this->getTranslations('question'),
+            'question' => $this->getTranslation('question', app()->getLocale()),
             'answers'  => $this->whenLoaded('answers', fn () => $this->answers->map(fn ($a) => [
                 'id'      => $a->id,
-                'answer'  => $a->getTranslations('answer'),
+                'answer'  => $a->getTranslation('answer', app()->getLocale()),
                 'is_true' => (bool) $a->is_true,
             ])),
         ];

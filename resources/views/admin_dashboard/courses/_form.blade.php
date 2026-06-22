@@ -35,6 +35,17 @@
     </select>
 </div>
 
+<div class="col-md-12">
+    <label class="form-label"> {{ __('text.qualification_skills') }} </label>
+    <select name="qualification_skill_ids[]" class="form-control form-select select2" multiple>
+        @foreach($qualificationSkills as $skill)
+            <option value="{{ $skill->id }}"
+                @selected(in_array($skill->id, old('qualification_skill_ids', $selectedQualificationSkillIds ?? [])))
+            >{{ $skill->name }}</option>
+        @endforeach
+    </select>
+</div>
+
 <div class="col-md-12 mb-3">
     <label class="form-label"> الوصف <small class="text-danger">*</small></label>
     <textarea cols="3" rows="3" class="tiny" name="description">{!! $content->description !!}</textarea>

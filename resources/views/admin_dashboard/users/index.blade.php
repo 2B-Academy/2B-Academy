@@ -30,6 +30,7 @@
                         <Th>الأسم</Th>
                         <th>البريد الإلكتروني</th>
                         <th>القسم</th>
+                        <th>المسمى الوظيفي</th>
                         <th>التحكم</th>
                     </tr>
                     </thead>
@@ -40,6 +41,7 @@
                             <td>{{$con->name}}</td>
                             <td>{{$con->email}}</td>
                             <td>{{$con->department_name}}</td>
+                            <td>{{$con->job_title}}</td>
                             <td>
                                 <div class="table-actions d-flex align-items-center gap-3 fs-6">
                                     <a href="{{route('admin.users.show', $con->id)}}" class="text-primary" data-bs-toggle="tooltip" data-bs-placement="bottom"
@@ -50,7 +52,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center">
+                            <td colspan="6" class="text-center">
                                 <p>لا يوجد بيانات</p>
                             </td>
                         </tr>

@@ -1,0 +1,7 @@
+Alias /frontend /var/www/html/2b-academy-test/frontend
+<Directory /var/www/html/2b-academy-test/frontend>
+    Options -Indexes +FollowSymLinks
+    AllowOverride None
+    Require all granted
+    FallbackResource /frontend/index.html
+</Directory>

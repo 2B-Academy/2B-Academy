@@ -3,19 +3,19 @@
 namespace App\Services;
 
 use App\Models\Admin;
+use App\Repositories\Contracts\AdminRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 
 class AdminAuthService
 {
-    /**
-     * Authenticate admin against the local admins table, issue Sanctum token.
-     *
-     * Returns ['token' => string, 'admin' => Admin] on success, null on failure.
-     */
+    public function __construct(
+        private readonly AdminRepositoryInterface $repo
+    ) {}
+
     public function login(string $email, string $password): ?array
     {
-        $admin = Admin::where('email', $email)->first();
+        $admin = $this->repo->findByEmail($email);
 
         if (!$admin || !Hash::check($password, $admin->password)) {
             return null;
@@ -27,7 +27,12 @@ class AdminAuthService
             Carbon::now()->addDays(30)
         )->plainTextToken;
 
-        return ['token' => $token, 'admin' => $admin->load('roles')];
+        return ['token' => $token, 'admin' => $this->repo->findWithRoles($admin->id)];
+    }
+
+    public function getWithRoles(Admin $admin): Admin
+    {
+        return $this->repo->findWithRoles($admin->id);
     }
 
     public function logout(Admin $admin, string $rawToken): void

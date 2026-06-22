@@ -10,5 +10,6 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth.user', 'role:Admin'])->group(function () {
-    Route::get('certificates', [CertificateController::class, 'index']);
+    Route::get('certificates',              [CertificateController::class, 'index']);
+    Route::get('certificates/{courseId}',   [CertificateController::class, 'show']);
 });

@@ -3,10 +3,12 @@
 use App\Http\Middleware\AdminLogMiddleware;
 use App\Http\Middleware\ApiProtectMiddleware;
 use App\Http\Middleware\AuthenticationMiddleware;
+use App\Http\Middleware\ResolveMobileEmployeeMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SwitchLanguageMiddleware;
 use App\Http\Middleware\TrustApiMiddleware;
+use App\Http\Middleware\VerifyMobileSharedTokenMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -83,15 +85,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'switch-language'    => SwitchLanguageMiddleware::class,
             'language'           => SetLocale::class,
             'trust'              => TrustApiMiddleware::class,
+            // 📱 Mobile API (S2S, HR integration) — shared bearer token
+            // gate + employee resolver. Used in pairs:
+            // ->middleware(['mobile.token', 'mobile.employee'])
+            'mobile.token'       => VerifyMobileSharedTokenMiddleware::class,
+            'mobile.employee'    => ResolveMobileEmployeeMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // JSON error responses for all API routes
+        // JSON error responses for all API routes — format matches ApiResponse trait
         $exceptions->render(function (AuthenticationException $_e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'status' => 'error',
-                    'error'  => __('messages.unauthenticated'),
+                    'status'  => 'error',
+                    'message' => __('messages.unauthenticated'),
+                    'errors'  => [],
                 ], 401);
             }
         });
@@ -99,8 +107,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'status' => 'error',
-                    'error'  => $e->errors(),
+                    'status'  => 'error',
+                    'message' => __('messages.validation_failed'),
+                    'errors'  => $e->errors(),
                 ], 422);
             }
         });
@@ -108,8 +117,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (NotFoundHttpException $_e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json([
-                    'status' => 'error',
-                    'error'  => __('messages.not_found'),
+                    'status'  => 'error',
+                    'message' => __('messages.not_found'),
+                    'errors'  => [],
                 ], 404);
             }
         });
@@ -118,8 +128,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 return response()->json([
-                    'status' => 'error',
-                    'error'  => $e->getMessage() ?: __('messages.server_error'),
+                    'status'  => 'error',
+                    'message' => $e->getMessage() ?: __('messages.server_error'),
+                    'errors'  => [],
                 ], $status);
             }
         });

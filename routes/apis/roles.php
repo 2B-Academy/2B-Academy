@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth.user', 'role:Admin'])->group(function () {
+    Route::get('permissions',     [RoleController::class, 'permissions']);
     Route::get('roles/all',       [RoleController::class, 'all']);
     Route::get('roles',           [RoleController::class, 'index']);
     Route::get('roles/{role}',    [RoleController::class, 'show']);

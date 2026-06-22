@@ -3,7 +3,7 @@
     <button type="button" class="close-button"><i class="ph ph-x"></i> </button>
     <div class="mobile-menu__inner">
         <a href="{{route('front.home')}}" class="mobile-menu__logo">
-            <img src="{{getFullPath($settings['header_logo']) ?? asset('front/assets/images/logo/orange_dark.png')}}"  width="50px">
+            <img src="{{ getFullPath($settings['header_logo'] ?? '') ?: asset('front/assets/images/logo/orange_dark.png') }}"  width="50px">
         </a>
         <div class="mobile-menu__menu">
 
@@ -57,7 +57,7 @@
                 <!-- Logo Start -->
                 <div class="logo">
                     <a href="{{route('front.home')}}" class="link">
-                        <img src="{{getFullPath($settings['header_logo']) ?? asset('front/assets/images/logo/orange_dark.png')}}">
+                        <img src="{{ getFullPath($settings['header_logo'] ?? '') ?: asset('front/assets/images/logo/orange_dark.png') }}">
                     </a>
                 </div>
                 <!-- Logo End  -->

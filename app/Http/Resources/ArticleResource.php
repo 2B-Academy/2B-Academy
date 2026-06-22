@@ -12,8 +12,8 @@ class ArticleResource extends JsonResource
         return [
             'id'           => $this->id,
             'type'         => $this->type,
-            'title'        => $this->getTranslations('title'),
-            'description'  => $this->getTranslations('description'),
+            'title'        => $this->getTranslation('title', app()->getLocale()),
+            'description'  => $this->getTranslation('description', app()->getLocale()),
             'slug'         => $this->slug,
             'date_publish' => $this->date_publish,
             'image'        => $this->image ? $this->getFileUrl($this->image) : null,

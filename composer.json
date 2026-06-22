@@ -7,8 +7,10 @@
     "require": {
         "php": "^8.2",
         "darkaonline/l5-swagger": "^11.0",
+        "doctrine/annotations": "^2.0",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^3.0",
+        "intervention/image-laravel": "^1.5",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",

@@ -11,8 +11,8 @@ class TestimonialResource extends JsonResource
     {
         return [
             'id'          => $this->id,
-            'name'        => $this->getTranslations('name'),
-            'description' => $this->getTranslations('description'),
+            'name'        => $this->getTranslation('name', app()->getLocale()),
+            'description' => $this->getTranslation('description', app()->getLocale()),
             'image'       => $this->image ? $this->getFileUrl($this->image) : null,
             'active'      => (bool) $this->active,
             'created_at'  => $this->created_at?->format('Y-m-d'),

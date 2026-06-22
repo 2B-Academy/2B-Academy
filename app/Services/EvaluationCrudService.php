@@ -22,6 +22,11 @@ class EvaluationCrudService
         return $this->repo->findOrFail($id);
     }
 
+    public function findWithCategory(int $id): Evaluation
+    {
+        return $this->repo->findWithCategory($id);
+    }
+
     public function create(array $data): Evaluation
     {
         $data['is_required'] = (bool) ($data['is_required'] ?? true);
@@ -33,12 +38,12 @@ class EvaluationCrudService
         if (isset($data['is_required'])) {
             $data['is_required'] = (bool) $data['is_required'];
         }
-        $this->repo->update($evaluation->id, $data);
-        return $evaluation->fresh('category');
+        $this->repo->update($evaluation, $data);
+        return $this->repo->findWithCategory($evaluation->id);
     }
 
     public function delete(Evaluation $evaluation): void
     {
-        $this->repo->delete($evaluation->id);
+        $this->repo->delete($evaluation);
     }
 }

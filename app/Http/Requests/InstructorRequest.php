@@ -28,7 +28,6 @@ class InstructorRequest extends FormRequest
             'name' => 'required|max:255',
             'bio' => 'required',
             'email' => 'required|email|unique:instructors,email',
-            'job_title' => 'required|max:255',
             'image' => $required_image,
         ];
     }
@@ -42,8 +41,6 @@ class InstructorRequest extends FormRequest
                'email.required',
                'email.email',
                'email.unique',
-               'job_title.required',
-               'job_title.max',
                'image.required',
                'image.mimes',
                'image.max',

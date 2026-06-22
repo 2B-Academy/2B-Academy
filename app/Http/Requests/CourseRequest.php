@@ -42,6 +42,8 @@ class CourseRequest extends FormRequest
             'instructors.*' => 'required',
             'outside_materials' => 'nullable|boolean',
             'is_evaluate' => 'nullable|boolean',
+            'qualification_skill_ids'   => 'nullable|array',
+            'qualification_skill_ids.*' => 'integer|distinct|exists:qualification_skills,id',
         ];
     }
 

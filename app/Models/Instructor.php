@@ -11,7 +11,7 @@ class Instructor extends Model
 {
     use HasFactory, HasFile, HasTranslations;
 
-    public array $translatable = ['name', 'bio', 'job_title'];
+    public array $translatable = ['name', 'bio'];
 
     protected $guarded = ['id'];
 

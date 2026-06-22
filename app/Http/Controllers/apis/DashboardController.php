@@ -2,44 +2,46 @@
 
 namespace App\Http\Controllers\apis;
 
-use App\Models\Article;
-use App\Models\Course;
-use App\Models\Instructor;
-use App\Models\User;
+use App\Services\DashboardService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use OpenApi\Annotations as OA;
 
 class DashboardController extends ApiController
 {
-    public function index(): JsonResponse
+    public function __construct(private readonly DashboardService $service) {}
+
+    /**
+     * @OA\Get(
+     *     path="/dashboard",
+     *     tags={"Dashboard"},
+     *     summary="Admin dashboard summary (counts, recent activity).",
+     *     security={{"BearerAuth": {}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Dashboard summary",
+     *         @OA\JsonContent(
+     *             allOf={
+     *                 @OA\Schema(ref="#/components/schemas/SuccessResponse"),
+     *                 @OA\Schema(
+     *                     @OA\Property(
+     *                         property="result",
+     *                         type="object",
+     *                         additionalProperties=true
+     *                     )
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *     @OA\Response(response=401, ref="#/components/responses/Unauthorized"),
+     *     @OA\Response(response=403, ref="#/components/responses/Forbidden")
+     * )
+     */
+    public function index(Request $request): JsonResponse
     {
-        $statistics = DB::selectOne('
-            SELECT
-                (SELECT COUNT(*) FROM courses WHERE active = 1)                          AS courses,
-                (SELECT COUNT(*) FROM users)                                              AS users,
-                (SELECT COUNT(*) FROM instructors)                                        AS instructors,
-                (SELECT COUNT(*) FROM articles WHERE active = 1)                         AS articles,
-                (SELECT COUNT(*) FROM course_ratings)                                    AS ratings,
-                (SELECT COUNT(*) FROM course_lecture_questions)                          AS lecture_questions,
-                (SELECT COUNT(*) FROM course_lecture_questions WHERE answer IS NULL)     AS unanswered_questions,
-                (SELECT COUNT(*) FROM user_course_assignments)                           AS user_assignments
-        ');
+        $range = $request->query('range');
+        $range = is_string($range) ? $range : null;
 
-        $topCourses = Course::active()
-            ->select('id', 'title')
-            ->selectRaw('(SELECT COUNT(*) FROM users_courses WHERE users_courses.course_id = courses.id) AS users_count')
-            ->orderByDesc('users_count')
-            ->limit(10)
-            ->get()
-            ->map(fn ($c) => [
-                'id'          => $c->id,
-                'title'       => $c->getTranslations('title'),
-                'users_count' => $c->users_count,
-            ]);
-
-        return $this->success(__('messages.retrieved'), [
-            'statistics'  => (array) $statistics,
-            'top_courses' => $topCourses,
-        ]);
+        return $this->success(__('messages.retrieved'), $this->service->getSummary($range));
     }
 }

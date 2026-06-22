@@ -16,9 +16,10 @@ Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'userLogin']);
 
         Route::middleware(['auth.user', 'role:User'])->group(function () {
-            Route::post('logout',     [AuthController::class, 'userLogout']);
-            Route::post('logout-all', [AuthController::class, 'userLogoutAll']);
-            Route::get('me',          [AuthController::class, 'userMe']);
+            Route::post('logout',      [AuthController::class, 'userLogout']);
+            Route::post('logout-all',  [AuthController::class, 'userLogoutAll']);
+            Route::get('me',           [AuthController::class, 'userMe']);
+            Route::put('profile',      [AuthController::class, 'userUpdateProfile']);
         });
     });
 
@@ -27,8 +28,9 @@ Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'adminLogin']);
 
         Route::middleware(['auth.user', 'role:Admin'])->group(function () {
-            Route::post('logout', [AuthController::class, 'adminLogout']);
-            Route::get('me',      [AuthController::class, 'adminMe']);
+            Route::post('logout',  [AuthController::class, 'adminLogout']);
+            Route::get('me',       [AuthController::class, 'adminMe']);
+            Route::put('profile',  [AuthController::class, 'adminUpdateProfile']);
         });
     });
 });

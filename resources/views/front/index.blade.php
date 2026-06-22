@@ -6,7 +6,7 @@
 @section('content')
 
     <!-- ========================= Banner Two Section Start =============================== -->
-    <section class="banner-two pt-80 position-relative overflow-hidden bg-banner" style="background-image: url('{{getFullPath($settings['banner_background']) ?? asset('front/assets/images/bg/banner.jpg')}}');">
+    <section class="banner-two pt-80 position-relative overflow-hidden bg-banner" style="background-image: url('{{ getFullPath($settings['banner_background'] ?? '') ?: asset('front/assets/images/bg/banner.jpg') }}');">
         <div class="overlay-banner"></div>
         <div class="container">
             <div class="row gy-5 align-items-center">

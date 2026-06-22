@@ -14,7 +14,7 @@ class CourseSessionResource extends JsonResource
             'course_id'    => $this->course_id,
             'section'      => $this->whenLoaded('section', fn () => [
                 'id'   => $this->section->id,
-                'name' => $this->section->getTranslations('name'),
+                'name' => $this->section->getTranslation('name', app()->getLocale()),
             ]),
             'title'        => $this->title,
             'session_date' => $this->session_date,

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,3 +64,35 @@ Route::namespace('App\Http\Controllers\FrontControllers')->name('front.')->group
 });
 include __DIR__.'/auth.php';
 include __DIR__.'/test.php';
+
+/*
+|--------------------------------------------------------------------------
+| Public storage fallback
+|--------------------------------------------------------------------------
+| Files uploaded via the `public` disk live in `storage/app/public/...`
+| and are normally served through the `public/storage` symlink created
+| by `php artisan storage:link`. That symlink is frequently missing on
+| fresh deploys (or gets wiped on redeploy), which makes every uploaded
+| image 404 — the request falls through to Laravel instead of being
+| served statically (exactly the `/storage/Course/*.jpg` symptom).
+|
+| This route streams the file straight off the public disk so images
+| render even when the symlink is absent. When the symlink DOES exist,
+| Apache/Nginx serves the file directly and never reaches this route,
+| so it's a zero-cost safety net. Registered LAST so it can't shadow
+| the `/storage/api-docs/...` redirect or the single-segment video
+| stream route above.
+|
+| Still run `php artisan storage:link` on the server for best perf —
+| this is a fallback, not a replacement.
+*/
+Route::get('/storage/{path}', function (string $path) {
+    abort_if(str_contains($path, '..'), 404);
+
+    $disk = Storage::disk('public');
+    abort_unless($disk->exists($path), 404);
+
+    // BinaryFileResponse → correct MIME guess + HTTP range support
+    // (so this also works for audio/video, not just images).
+    return response()->file($disk->path($path));
+})->where('path', '.*')->name('storage.public');

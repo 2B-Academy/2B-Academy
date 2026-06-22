@@ -40,6 +40,6 @@ class CourseExamService
 
     public function delete(CourseExam $exam): void
     {
-        $this->repo->delete($exam->id);
+        $this->repo->delete($exam);
     }
 }

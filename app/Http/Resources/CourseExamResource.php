@@ -12,7 +12,7 @@ class CourseExamResource extends JsonResource
         return [
             'id'         => $this->id,
             'section_id' => $this->section_id,
-            'title'      => $this->getTranslations('title'),
+            'title'      => $this->getTranslation('title', app()->getLocale()),
             'degree'     => $this->degree,
             'is_final'   => (bool) $this->is_final,
             'questions'  => $this->whenLoaded('questions',

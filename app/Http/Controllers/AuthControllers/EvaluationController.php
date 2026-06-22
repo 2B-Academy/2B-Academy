@@ -76,9 +76,10 @@ class EvaluationController extends Controller
 
         // =======================// الحفظ// =======================
         $user = auth()->user();
+        $firstRow = null;
         foreach ($request->question as $evaluation_id => $answer) {
             $evaluation = Evaluation::with('category')->find($evaluation_id);
-            UserCourseEvaluation::create([
+            $row = UserCourseEvaluation::create([
                 'user_id' => $user->id,
                 'user_machine_code' => $user->machine_code,
                 'user_department' => $user->department_name,
@@ -97,6 +98,15 @@ class EvaluationController extends Controller
                 },
                 'answer' => $answer,
             ]);
+
+            $firstRow ??= $row;
+        }
+
+        // Completing an evaluation-based course earns its certificate.
+        if ($firstRow !== null) {
+            $firstRow->setRelation('course', $course);
+            $firstRow->setRelation('user', $user);
+            app(\App\Services\CertificateService::class)->issueFromEvaluation($firstRow);
         }
 
         return response()->json([

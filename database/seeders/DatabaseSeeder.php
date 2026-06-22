@@ -35,6 +35,8 @@ class DatabaseSeeder extends Seeder
 
         // CMS / settings.
         $this->call(SettingSeeder::class);
+        $this->call(MobileSettingSeeder::class);
+        $this->call(PlatformConfigSeeder::class);
         $this->call(AboutSeeder::class);
         $this->call(ArticleSeeder::class);
         $this->call(TestimonialSeeder::class);
@@ -45,6 +47,9 @@ class DatabaseSeeder extends Seeder
         // Catalogue.
         $this->call(CategorySeeder::class);
         $this->call(InstructorSeeder::class);
+        // JobTitleSeeder is intentionally NOT called here: it projects
+        // its rows from `users.department_name` and so must wait for
+        // UserSeeder. See the call further down, right after UserSeeder.
 
         // Course tree.
         $this->call(CourseSeeder::class);
@@ -67,6 +72,9 @@ class DatabaseSeeder extends Seeder
 
         // End-user bulk fixture.
         $this->call(UserSeeder::class);
+
+        // Catalogue rows derived from the HR roster (must run after UserSeeder).
+        $this->call(JobTitleSeeder::class);
 
         // User activity.
         $this->call(UsersCourseSeeder::class);

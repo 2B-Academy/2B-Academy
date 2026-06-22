@@ -10,6 +10,11 @@ class UserExam extends Model
     use HasFactory;
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'submitted_at' => 'datetime',
+        'reviewed_at'  => 'datetime',
+    ];
+
     public function exam()
     {
         return $this->belongsTo(CourseExam::class, 'exam_id');
@@ -30,4 +35,13 @@ class UserExam extends Model
         return $this->hasMany(UserExamAnswer::class,'user_exam_id');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Additive relationships for the 2026 admin Quiz submission workflow.
+    |--------------------------------------------------------------------------
+    */
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

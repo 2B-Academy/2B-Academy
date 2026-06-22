@@ -1,11 +1,1 @@
-RewriteEngine on
-RewriteCond %{REQUEST_URI} !^public
 RewriteRule ^(.*)$ public/$1 [L]
-<IfModule mod_php8.c>
-    php_value upload_max_filesize 2048M
-    php_value post_max_size 2048M
-</IfModule>
-
-<IfModule mod_headers.c>
-    LimitRequestBody 0
-</IfModule>

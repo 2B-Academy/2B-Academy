@@ -19,10 +19,10 @@ class UsersCourseResource extends JsonResource
             ]),
             'course'  => $this->whenLoaded('course', fn () => [
                 'id'    => $this->course->id,
-                'title' => $this->course->getTranslations('title'),
+                'title' => $this->course->getTranslation('title', app()->getLocale()),
             ]),
             'group'   => $this->whenLoaded('group', fn () => $this->group
-                ? ['id' => $this->group->id, 'name' => $this->group->getTranslations('name')]
+                ? ['id' => $this->group->id, 'name' => $this->group->getTranslation('name', app()->getLocale())]
                 : null
             ),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),

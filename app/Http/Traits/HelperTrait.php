@@ -214,7 +214,12 @@ Trait HelperTrait
     {
         $path =  public_path('front/assets/images/thumbs/certificate-two-img.jpg');
         $img = Image::read($path);
-        require_once('./arabic/Arabic.php');
+        // Absolute path so the Arabic glyph shaper loads regardless of the
+        // current working directory. Under the web SAPI the CWD is public/
+        // (so the historic './arabic/Arabic.php' worked), but CLI / queue /
+        // scheduler / test runs have the project root as CWD and would
+        // otherwise fatal. public_path() resolves to the exact same file.
+        require_once public_path('arabic/Arabic.php');
         $obj = new \ArPHP\I18N\Arabic('Glyphs');
         if ($this->isArabic($courseName)) {
             $course_name = $obj->utf8Glyphs($courseName);

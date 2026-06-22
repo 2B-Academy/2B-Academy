@@ -123,9 +123,16 @@ return [
             /**
              * analyser: defaults to \OpenApi\StaticAnalyser .
              *
+             * L5-Swagger v9 hard-codes the analyser to PHP 8 attributes only.
+             * Providing a custom analyser here re-enables PHPDoc (`@OA\*`) parsing,
+             * which is the canonical L5-Swagger / swagger-php documentation style.
+             *
              * @see \OpenApi\scan
              */
-            'analyser' => null,
+            'analyser' => new \OpenApi\Analysers\ReflectionAnalyser([
+                new \OpenApi\Analysers\AttributeAnnotationFactory(),
+                new \OpenApi\Analysers\DocBlockAnnotationFactory(),
+            ]),
 
             /**
              * analysis: defaults to a new \OpenApi\Analysis .

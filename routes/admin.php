@@ -48,6 +48,7 @@ Route::middleware(['auth:admin'])->namespace('App\Http\Controllers\AdminControll
     Route::delete('/course/user-exam/{id}', [UserController::class, 'destroyUserExam'])->name('user.user-exam.destroy');
     Route::resource('categories', 'CategoryController');
     Route::resource('instructors', 'InstructorController');
+    Route::resource('qualification-skills', 'QualificationSkillController');
     Route::resource('courses', 'CourseController');
     Route::resource('courses.sections', 'CourseSectionController');
     Route::delete('/course/{course}/sections', [CourseSectionController::class, 'destroyAll'])->name('courses.sections.destroyAll');

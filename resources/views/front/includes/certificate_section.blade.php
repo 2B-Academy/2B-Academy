@@ -16,7 +16,7 @@
                     </div>
                     <div class="col-lg-6">
                         <div class="certificate-two__thumb">
-                            <img src="{{getFullPath($settings['certificate'])}}" alt="" data-tilt data-tilt-max="10" data-tilt-speed="500" data-tilt-perspective="5000" data-tilt-full-page-listening>
+                            <img src="{{ getFullPath($settings['certificate'] ?? '') ?: '' }}" alt="" data-tilt data-tilt-max="10" data-tilt-speed="500" data-tilt-perspective="5000" data-tilt-full-page-listening>
                         </div>
                     </div>
                 </div>

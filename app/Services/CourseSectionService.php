@@ -26,17 +26,37 @@ class CourseSectionService
 
     public function create(Course $course, array $data): CourseSection
     {
-        return $course->sections()->create(['name' => $data['name']]);
+        return $this->repo->createForCourse($course, $this->fillable($data));
     }
 
     public function update(CourseSection $section, array $data): CourseSection
     {
-        $section->update(['name' => $data['name']]);
-        return $section->fresh();
+        /** @var CourseSection */
+        return $this->repo->update($section, $this->fillable($data));
+    }
+
+    /**
+     * Project the validated request payload down to the columns the
+     * `course_sections` table actually has. The keys that are missing
+     * from `$data` are skipped so partial PATCH-style updates work too.
+     *
+     * Keeping this in the service (not the repository) means the request
+     * shape and the persistence shape stay decoupled — the repo just gets
+     * a clean array of column => value pairs.
+     */
+    private function fillable(array $data): array
+    {
+        $out = ['name' => $data['name']];
+        foreach (['start_date', 'end_date', 'capacity', 'status', 'avg_session_time'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $out[$key] = $data[$key];
+            }
+        }
+        return $out;
     }
 
     public function delete(CourseSection $section): void
     {
-        $section->delete();
+        $this->repo->delete($section);
     }
 }

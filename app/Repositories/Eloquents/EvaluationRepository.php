@@ -29,4 +29,9 @@ class EvaluationRepository extends BaseRepository implements EvaluationRepositor
     {
         return Evaluation::where('evaluation_category_id', $categoryId)->orderBy('id')->get();
     }
+
+    public function findWithCategory(int $id): Evaluation
+    {
+        return Evaluation::with('category')->findOrFail($id);
+    }
 }

@@ -28,6 +28,7 @@
                         <div class="col-md-6">
                             <h6 class="mb-2"> كود الموظف : {{$content->machine_code}}</h6>
                             <h6 class="mb-2"> الأسم : {{$content->name}}</h6>
+                            <h6 class="mb-2"> المسمى الوظيفي : {{$content->job_title}}</h6>
                         </div>
                         <div class="col-md-6">
                             <h6 class="mb-2"> البريد الإلكتروني : {{$content->email}}</h6>

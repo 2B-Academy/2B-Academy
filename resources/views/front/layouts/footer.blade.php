@@ -77,7 +77,7 @@
                 <div class="bottom-footer__inner flex-between gap-16 flex-wrap">
                     <div class="footer-item__logo mb-0"  data-aos="zoom-in-right">
                         <a href="{{route('front.home')}}">
-                            <img src="{{getFullPath($settings['footer_logo']) ?? asset('front/assets/images/logo/orange_white.png')}}">
+                            <img src="{{ getFullPath($settings['footer_logo'] ?? '') ?: asset('front/assets/images/logo/orange_white.png') }}">
                         </a>
                     </div>
                     <p class="text-white text-line-1 fw-normal"  data-aos="zoom-in">    جميع الحقوق محفوظة &copy; {{date('Y')}} <span class="fw-semibold">تو بي</span></p>

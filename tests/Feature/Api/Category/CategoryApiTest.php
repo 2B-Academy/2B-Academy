@@ -104,24 +104,25 @@ class CategoryApiTest extends ApiTestCase
         ['headers' => $headers] = $this->adminToken();
 
         $response = $this->withHeaders($headers)->postJson(self::BASE . '/categories', [
-            'name'   => 'Programming',
+            'name'   => ['en' => 'Programming', 'ar' => 'برمجة'],
             'active' => true,
-            'logo'   => UploadedFile::fake()->image('logo.png'),
         ]);
 
         $this->assertCreated($response);
         $this->assertDatabaseHas('categories', ['active' => true]);
     }
 
-    public function test_store_requires_logo_on_create(): void
+    public function test_store_succeeds_without_logo(): void
     {
+        // Categories no longer carry an image (removed per design review),
+        // so a create with no logo must succeed.
         ['headers' => $headers] = $this->adminToken();
 
         $response = $this->withHeaders($headers)->postJson(self::BASE . '/categories', [
-            'name' => 'No Logo Category',
+            'name' => ['en' => 'No Logo Category', 'ar' => 'تصنيف بدون شعار'],
         ]);
 
-        $this->assertValidationError($response);
+        $this->assertCreated($response);
     }
 
     public function test_store_requires_name(): void
@@ -129,7 +130,7 @@ class CategoryApiTest extends ApiTestCase
         ['headers' => $headers] = $this->adminToken();
 
         $response = $this->withHeaders($headers)->postJson(self::BASE . '/categories', [
-            'logo' => UploadedFile::fake()->image('logo.png'),
+            'active' => true,
         ]);
 
         $this->assertValidationError($response);

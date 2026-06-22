@@ -20,4 +20,25 @@ class UserCourseAssignment extends Model
         return $this->belongsTo(CourseAssignment::class , 'course_assignment_id');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Additive relationships for the rich-question assignment system.
+    | These are NEW methods only — no existing behaviour is modified.
+    |--------------------------------------------------------------------------
+    */
+
+    public function answers()
+    {
+        return $this->hasMany(UserCourseAssignmentAnswer::class, 'user_course_assignment_id');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    protected $casts = [
+        'submitted_at' => 'datetime',
+        'reviewed_at'  => 'datetime',
+    ];
 }

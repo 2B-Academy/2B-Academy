@@ -11,9 +11,14 @@ class CourseLecture extends Model
 {
     use HasFactory, HasFile, HasTranslations;
 
-    public array $translatable = ['title'];
+    public array $translatable = ['title', 'instructions'];
 
     protected $guarded = ['id'];
+
+    protected $casts = [
+        'duration_minutes'   => 'integer',
+        'require_completion' => 'boolean',
+    ];
 
     public function section()
     {
@@ -23,5 +28,10 @@ class CourseLecture extends Model
     public function course()
     {
         return $this->belongsTo(Course::class, 'course_id');
+    }
+
+    public function session()
+    {
+        return $this->belongsTo(CourseSession::class, 'session_id');
     }
 }

@@ -189,6 +189,11 @@ class CourseController extends Controller
                 'status'      => $status
             ]);
 
+            // Issue the first-class certificate on a passing final exam.
+            if ($status === 'success') {
+                app(\App\Services\CertificateService::class)->issueFromExam($user_exam);
+            }
+
             Session::flash('success', 'تم حفظ إجاباتك بنجاح');
             return redirect()->route('front.auth.my-exams');
         }

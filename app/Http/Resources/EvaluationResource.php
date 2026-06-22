@@ -11,7 +11,7 @@ class EvaluationResource extends JsonResource
     {
         return [
             'id'          => $this->id,
-            'title'       => $this->getTranslations('title'),
+            'title'       => $this->getTranslation('title', app()->getLocale()),
             'type'        => $this->type,
             'is_required' => (bool) $this->is_required,
             'category'    => $this->whenLoaded('category', fn () => new EvaluationCategoryResource($this->category)),

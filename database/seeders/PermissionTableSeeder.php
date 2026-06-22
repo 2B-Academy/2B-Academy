@@ -121,6 +121,10 @@ class PermissionTableSeeder extends Seeder
             [96, 'evaluations', 'evaluations-delete', '2026-01-31 11:42:02'],
             [97, 'evaluations-reports', 'evaluations-reports-index', '2026-02-03 13:54:54'],
             [98, 'attendances', 'attendances-index', '2026-02-04 10:11:51'],
+            [99, 'qualification-skills', 'qualification-skills-index', '2026-05-19 14:00:00'],
+            [100, 'qualification-skills', 'qualification-skills-create', '2026-05-19 14:00:00'],
+            [101, 'qualification-skills', 'qualification-skills-edit', '2026-05-19 14:00:00'],
+            [102, 'qualification-skills', 'qualification-skills-delete', '2026-05-19 14:00:00'],
         ];
 
         $payload = array_map(function ($row) {

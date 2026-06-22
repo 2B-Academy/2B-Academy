@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Route;
 
 // Authenticated users (students + admins)
 Route::middleware('auth.user')->group(function () {
-    Route::get('courses',          [CourseController::class, 'index']);
-    Route::get('courses/{course}', [CourseController::class, 'show']);
+    Route::get('courses',                  [CourseController::class, 'index']);
+    Route::get('courses/tab-counts',       [CourseController::class, 'tabCounts']);
+    Route::get('courses/{course}',         [CourseController::class, 'show']);
 });
 
 // Admin only

@@ -11,7 +11,7 @@ class EvaluationCategoryResource extends JsonResource
     {
         return [
             'id'         => $this->id,
-            'name'       => $this->getTranslations('name'),
+            'name'       => $this->getTranslation('name', app()->getLocale()),
             'created_at' => $this->created_at?->format('Y-m-d'),
         ];
     }
