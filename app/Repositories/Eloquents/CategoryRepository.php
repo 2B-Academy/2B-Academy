@@ -17,7 +17,10 @@ class CategoryRepository extends BaseRepository implements CategoryRepositoryInt
     public function paginateWithFilters(int $perPage, ?string $search, ?bool $active): LengthAwarePaginator
     {
         return $this->model->newQuery()
-            ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+                $q2->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", ["%{$search}%"])
+                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.ar')) LIKE ?", ["%{$search}%"]);
+            }))
             ->when(!is_null($active), fn ($q) => $q->where('active', $active))
             ->withCount('courses')
             ->latest()

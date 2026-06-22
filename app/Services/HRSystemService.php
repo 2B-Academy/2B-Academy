@@ -91,7 +91,13 @@ class HRSystemService
 
 
     /************************ Get All Employees From HR System *************************/
-    public function getAllEmployees()
+    /**
+     * Fetch all current employees from the HR system.
+     *
+     * @param  string  $culture  Language for returned name fields: 'ar' or 'en' (default 'ar')
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    public function getAllEmployees(string $culture = 'ar')
     {
         $email = env('HR_ADMIN_EMAIL');
         $password = env('HR_ADMIN_PASSWORD');
@@ -99,7 +105,9 @@ class HRSystemService
         if (!$token) {
             return $this->errorResponse('التوكن غير صحيح');
         }
-        $data = $this->thirdPartyIntegration('POST', $this->hr_base_url . 'Employee/GetCurrentEmployees', null, $token);
+
+        $url  = $this->hr_base_url . 'Employee/GetCurrentEmployees?culture=' . $culture;
+        $data = $this->thirdPartyIntegration('POST', $url, null, $token);
 
         if (!is_object($data) || !isset($data->statusCode)) {
             return collect();
@@ -117,22 +125,18 @@ class HRSystemService
      * It does **not** carry an employee count; pair with
      * {@see self::getAllEmployees()} when filtering by "has employees".
      *
-     * Hits the same `HR_BASE_URL` host as {@see self::getAllEmployees()}
-     * so the job-name space is guaranteed to overlap with the
-     * `jobName` field on every employee record — different HR hosts
-     * carry different rosters, and mixing them silently drops cards
-     * whose names don't match across systems.
-     *
+     * @param  string  $culture  Language for returned name fields: 'ar' or 'en' (default 'ar')
      * @return \Illuminate\Support\Collection<int, object>
      */
-    public function getAllJobs()
+    public function getAllJobs(string $culture = 'ar')
     {
         $token = $this->getAccessToken(env('HR_ADMIN_EMAIL'), env('HR_ADMIN_PASSWORD'));
         if (! $token) {
             return collect();
         }
 
-        $data = $this->thirdPartyIntegration('POST', $this->hr_base_url . 'Job', null, $token);
+        $url  = $this->hr_base_url . 'Job?culture=' . $culture;
+        $data = $this->thirdPartyIntegration('POST', $url, null, $token);
 
         if (! is_object($data) || ! isset($data->data) || ! is_array($data->data)) {
             return collect();

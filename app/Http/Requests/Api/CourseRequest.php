@@ -40,8 +40,10 @@ class CourseRequest extends FormRequest
         }
 
         if ($this->has('type') && ! $this->has('course_type')) {
-            $type = $this->input('type');
-            $merge['course_type'] = $type === 'online' ? 'online' : 'offline';
+            // Normalize legacy `type` field to the full course_type enum code.
+            $allowed = ['online', 'offline', 'hybrid', 'external_link'];
+            $type    = $this->input('type');
+            $merge['course_type'] = in_array($type, $allowed, true) ? $type : 'offline';
         }
 
         if ($this->has('qualification_ids') && ! $this->has('qualification_skill_ids')) {
@@ -72,7 +74,7 @@ class CourseRequest extends FormRequest
             : 'nullable|image|mimes:png,jpg,jpeg,webp,svg,gif|max:2048';
 
         return [
-            'course_type'             => 'sometimes|in:online,offline',
+            'course_type'             => 'sometimes|in:online,offline,hybrid,external_link',
             'title'                   => 'required|array',
             'title.en'                => 'required|string|max:255',
             'title.ar'                => 'nullable|string|max:255',

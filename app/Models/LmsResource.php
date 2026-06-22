@@ -12,8 +12,10 @@ class LmsResource extends Model
 
     protected $fillable = [
         'title',
+        'title_ar',
         'type',
         'content',
+        'content_ar',
         'url',
         'file_path',
         'file_name',

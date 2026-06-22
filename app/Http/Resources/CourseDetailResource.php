@@ -45,8 +45,14 @@ class CourseDetailResource extends JsonResource
 
         return [
             'id'                 => $this->id,
-            'title'              => $this->getTranslation('title', app()->getLocale()),
-            'description'        => $this->getTranslation('description', app()->getLocale()),
+            'title'              => [
+                'en' => (string) ($this->getTranslation('title', 'en') ?? ''),
+                'ar' => (string) ($this->getTranslation('title', 'ar') ?? ''),
+            ],
+            'description'        => [
+                'en' => (string) ($this->getTranslation('description', 'en') ?? ''),
+                'ar' => (string) ($this->getTranslation('description', 'ar') ?? ''),
+            ],
             'course_type'        => $this->course_type,
             'category'           => $this->whenLoaded('category', fn () => [
                 'id'   => $this->category->id,
@@ -172,7 +178,7 @@ class CourseDetailResource extends JsonResource
             'id'                => $r->id,
             'rating'            => (int) $r->rating,
             'comment'           => $r->comment,
-            'user_name'         => $r->user?->name ?? 'Unknown',
+            'user_name'         => $r->user ? $r->user->getLocalizedName() : 'Unknown',
             'user_machine_code' => $r->user?->machine_code ?? null,
             'created_at'        => $r->created_at?->toIso8601String(),
         ])->values()->all();

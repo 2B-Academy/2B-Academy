@@ -28,11 +28,17 @@ class AdminUserListResource extends JsonResource
         $row    = $this->resource;
         $locale = app()->getLocale();
 
-        $nameEn = (string) ($row->name_en ?? '');
-        $nameAr = $row->name_ar !== null ? (string) $row->name_ar : null;
+        $nameEn      = (string) ($row->name_en      ?? '');
+        $nameAr      = (string) ($row->name_ar      ?? '');
+        $nameFallback = (string) ($row->name_fallback ?? '');
+
+        // name_fallback is the raw HR-synced name (typically Arabic).
+        // It is used as a last resort so users imported from HR before
+        // bilingual sync show their Arabic name for both locales rather
+        // than appearing blank.
         $display = $locale === 'ar'
-            ? ($nameAr ?: $nameEn)
-            : ($nameEn ?: ($nameAr ?? ''));
+            ? ($nameAr ?: $nameEn ?: $nameFallback)
+            : ($nameEn ?: $nameAr ?: $nameFallback);
 
         $compliance = $row->compliance_pct;
         $compliance = $compliance === null ? null : (int) $compliance;
@@ -46,7 +52,7 @@ class AdminUserListResource extends JsonResource
             'composite_id'           => sprintf('%s:%d', $row->source ?? 'user', (int) ($row->id ?? 0)),
             'name'                   => $display,
             'name_en'                => $nameEn ?: null,
-            'name_ar'                => $nameAr,
+            'name_ar'                => $nameAr ?: null,
             'email'                  => $row->email,
             'phone'                  => $row->phone,
             'machine_code'           => $row->machine_code,

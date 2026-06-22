@@ -21,18 +21,28 @@ class AdminMessageResource extends JsonResource
             'recipients_count'   => $this->total_recipients ?? $this->recipients_count ?? null,
             'total_recipients'   => $this->total_recipients ?? null,
             'preview'            => $this->body ? mb_substr(strip_tags($this->body), 0, 100) : '',
-            'recipients_text'    => $this->total_recipients
+            'recipients_text'            => $this->total_recipients
                 ? $this->total_recipients . ' recipients'
                 : null,
+            'has_learner_recipients'     => (int) ($this->learner_recipients_count    ?? 0) > 0,
+            'has_instructor_recipients'  => (int) ($this->instructor_recipients_count ?? 0) > 0,
             'created_at'       => $this->created_at?->toDateTimeString(),
             'recipients'       => $this->whenLoaded('recipients', fn () =>
-                $this->recipients->map(fn ($recipient) => [
-                    'user'    => [
-                        'id'   => $recipient->user?->id,
-                        'name' => $recipient->user?->name,
-                    ],
-                    'read_at' => $recipient->read_at?->toDateTimeString(),
-                ])
+                $this->recipients->map(function ($recipient) {
+                    $isInstructor = $recipient->instructor_id !== null;
+                    $person       = $isInstructor ? $recipient->instructor : $recipient->user;
+                    $name         = $person
+                        ? (method_exists($person, 'getLocalizedName')
+                            ? $person->getLocalizedName()
+                            : $person->getTranslation('name', app()->getLocale()))
+                        : null;
+                    return [
+                        'id'           => $person?->id,
+                        'name'         => $name,
+                        'is_instructor' => $isInstructor,
+                        'read_at'      => $recipient->read_at?->toDateTimeString(),
+                    ];
+                })
             ),
         ];
     }

@@ -118,7 +118,7 @@ return [
         'all'      => 'All',
         'unread'   => 'Unread',
         'sent'     => 'Sent',
-        'resolved' => 'Resolved',
+        'received' => 'Received',
     ],
 
     // ── Users (admin) ──────────────────────────────────────────────────

@@ -13,7 +13,7 @@ class UsersCourseResource extends JsonResource
             'id'      => $this->id,
             'user'    => $this->whenLoaded('user', fn () => [
                 'id'              => $this->user->id,
-                'name'            => $this->user->name,
+                'name'            => $this->user->getLocalizedName(),
                 'machine_code'    => $this->user->machine_code,
                 'department_name' => $this->user->department_name,
             ]),

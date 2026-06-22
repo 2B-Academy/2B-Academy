@@ -106,7 +106,7 @@ return [
         'all'      => 'الكل',
         'unread'   => 'غير مقروء',
         'sent'     => 'المُرسلة',
-        'resolved' => 'تم حلها',
+        'received' => 'المُستلمة',
     ],
 
     'user_status' => [

@@ -55,14 +55,21 @@ class JobTitleSyncService
      */
     public function syncFromHr(bool $pruneOrphans = false): array
     {
-        $jobs      = $this->hr->getAllJobs();
-        $employees = $this->hr->getAllEmployees();
+        $jobsAr    = $this->hr->getAllJobs('ar');
+        $jobsEn    = $this->hr->getAllJobs('en');
+        $employees = $this->hr->getAllEmployees('ar');
 
-        if ($jobs->isEmpty()) {
+        if ($jobsAr->isEmpty()) {
             Log::warning('JobTitleSyncService::syncFromHr — HR /Job returned no rows; skipping sync.');
 
             return $this->emptyReport();
         }
+
+        // Build id → English name map for cross-referencing.
+        $enNameById = $jobsEn
+            ->filter(fn ($j) => is_object($j) && isset($j->id))
+            ->mapWithKeys(fn ($j) => [(string) $j->id => trim((string) ($j->name ?? ''))])
+            ->all();
 
         $countsByJobName = $employees
             ->map(fn ($e) => is_object($e) ? trim((string) ($e->jobName ?? '')) : null)
@@ -70,18 +77,22 @@ class JobTitleSyncService
             ->countBy()
             ->all();
 
-        $eligibleNames = $jobs
-            ->map(fn ($j) => is_object($j) ? trim((string) ($j->name ?? '')) : null)
-            ->filter()
-            ->unique()
-            ->values()
-            ->filter(fn (string $name) => ($countsByJobName[$name] ?? 0) > 0)
+        // Build eligible job tuples keyed by Arabic name.
+        $eligibleJobs = $jobsAr
+            ->filter(fn ($j) => is_object($j) && trim((string) ($j->name ?? '')) !== '')
+            ->map(fn ($j) => [
+                'name'    => trim((string) $j->name),
+                'name_ar' => trim((string) $j->name),
+                'name_en' => $enNameById[(string) ($j->id ?? '')] ?? '',
+            ])
+            ->unique('name')
+            ->filter(fn (array $t) => ($countsByJobName[$t['name']] ?? 0) > 0)
             ->values()
             ->all();
 
-        $report = $this->upsertCatalogue($eligibleNames, $pruneOrphans);
+        $report = $this->upsertCatalogue($eligibleJobs, $pruneOrphans);
 
-        return ['source_rows' => $jobs->count(), 'eligible' => count($eligibleNames)] + $report;
+        return ['source_rows' => $jobsAr->count(), 'eligible' => count($eligibleJobs)] + $report;
     }
 
     /**
@@ -101,7 +112,13 @@ class JobTitleSyncService
             return $this->emptyReport();
         }
 
-        $report = $this->upsertCatalogue($names, $pruneOrphans);
+        // Offline path has no bilingual data; name_ar mirrors the HR name, name_en is empty.
+        $jobs = array_map(
+            static fn (string $name): array => ['name' => $name, 'name_ar' => $name, 'name_en' => ''],
+            $names,
+        );
+
+        $report = $this->upsertCatalogue($jobs, $pruneOrphans);
 
         return ['source_rows' => count($names), 'eligible' => count($names)] + $report;
     }
@@ -134,33 +151,51 @@ class JobTitleSyncService
      * Shared upsert + orphan-prune routine used by both the HR-driven
      * and offline-fallback paths.
      *
-     * @param  array<int, string>  $names
+     * Each entry in $jobs must be an associative array with at least:
+     *   ['name' => string, 'name_ar' => string, 'name_en' => string]
+     *
+     * Uses MySQL/MariaDB INSERT … ON DUPLICATE KEY UPDATE so bilingual
+     * name fields are refreshed on every sync without dropping existing
+     * qualification-skill mappings on the row.
+     *
+     * @param  array<int, array{name: string, name_ar: string, name_en: string}>  $jobs
      * @return array{created:int, unchanged:int, orphaned:int, pruned:int}
      */
-    private function upsertCatalogue(array $names, bool $pruneOrphans): array
+    private function upsertCatalogue(array $jobs, bool $pruneOrphans): array
     {
-        if ($names === []) {
+        if ($jobs === []) {
             return ['created' => 0, 'unchanged' => 0, 'orphaned' => 0, 'pruned' => 0];
         }
 
-        $existing = JobTitle::query()
+        $names   = array_column($jobs, 'name');
+        $now     = now();
+
+        $existingNames = JobTitle::query()
             ->whereIn('name', $names)
             ->pluck('name')
             ->all();
 
-        $missing = array_values(array_diff($names, $existing));
-        $now     = now();
+        $rows = [];
 
-        if ($missing !== []) {
-            JobTitle::query()->insert(array_map(
-                static fn (string $name): array => [
-                    'name'       => $name,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-                $missing,
-            ));
+        foreach ($jobs as $job) {
+            $rows[] = [
+                'name'       => $job['name'],
+                'name_ar'    => $job['name_ar'] !== '' ? $job['name_ar'] : null,
+                'name_en'    => $job['name_en'] !== '' ? $job['name_en'] : null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+
+        // Upsert: insert new rows, update bilingual columns on conflict.
+        JobTitle::query()->upsert(
+            $rows,
+            ['name'],
+            ['name_ar', 'name_en', 'updated_at'],
+        );
+
+        $created  = count(array_diff($names, $existingNames));
+        $unchanged = count($existingNames);
 
         $orphanQuery = JobTitle::query()->whereNotIn('name', $names);
         $orphaned    = $orphanQuery->count();
@@ -171,8 +206,8 @@ class JobTitleSyncService
         }
 
         return [
-            'created'   => count($missing),
-            'unchanged' => count($existing),
+            'created'   => $created,
+            'unchanged' => $unchanged,
             'orphaned'  => $orphaned,
             'pruned'    => $pruned,
         ];

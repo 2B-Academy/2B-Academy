@@ -17,7 +17,7 @@ class UserCourseAssignmentResource extends JsonResource
             'course_title'     => $this->whenLoaded('assignment', fn () => optional($this->assignment->course)->title),
             'user'             => $this->whenLoaded('user', fn () => [
                 'id'              => $this->user->id,
-                'name'            => $this->user->name,
+                'name'            => $this->user->getLocalizedName(),
                 'machine_code'    => $this->user->machine_code,
                 'department_name' => $this->user->department_name,
             ]),

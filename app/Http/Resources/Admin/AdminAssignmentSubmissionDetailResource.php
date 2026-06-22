@@ -62,7 +62,7 @@ class AdminAssignmentSubmissionDetailResource extends JsonResource
             'instructor_name'  => $instructor && isset($instructor->name) ? $instructor->name : null,
             'user'             => $this->whenLoaded('user', fn () => [
                 'id'              => $this->user->id,
-                'name'            => $this->user->name,
+                'name'            => $this->user->getLocalizedName(),
                 'machine_code'    => $this->user->machine_code,
                 'department_name' => $this->user->department_name,
             ]),

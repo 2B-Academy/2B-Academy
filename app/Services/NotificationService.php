@@ -34,7 +34,13 @@ class NotificationService
         $notification->delete();
     }
 
-    public function create(array $data, array $userCodes = []): PublicNotification
+    /**
+     * @param  array<int, string>  $userCodes     HR machine codes for learner push targeting
+     * @param  array<int, int>     $instructorIds Instructor PKs — stored in DB only, no HR push
+     *                                            (instructors are not HR employees and have no
+     *                                            device tokens in the HR push pipeline)
+     */
+    public function create(array $data, array $userCodes = [], array $instructorIds = []): PublicNotification
     {
         $data['for_public'] = (bool) ($data['for_public'] ?? false);
 
@@ -48,17 +54,30 @@ class NotificationService
                 $notification->getTranslation('title', 'en') ?: $notification->getTranslation('title', 'ar'),
                 $notification->getTranslation('body', 'en')  ?: $notification->getTranslation('body', 'ar'),
             );
-        } elseif (!empty($userCodes)) {
-            $codes = array_unique($userCodes);
-            $this->repo->insertUserRecords($notification->id, $codes);
+        } else {
+            // Learner codes — store and push via HR pipeline
+            if (!empty($userCodes)) {
+                $codes = array_unique($userCodes);
+                $this->repo->insertUserRecords($notification->id, $codes);
 
-            $this->pushService->sendNotificationsToSelectedUsers(
-                $notification->getTranslation('title', 'ar'),
-                $notification->getTranslation('body', 'ar'),
-                $notification->getTranslation('title', 'en') ?: $notification->getTranslation('title', 'ar'),
-                $notification->getTranslation('body', 'en')  ?: $notification->getTranslation('body', 'ar'),
-                $codes,
-            );
+                $this->pushService->sendNotificationsToSelectedUsers(
+                    $notification->getTranslation('title', 'ar'),
+                    $notification->getTranslation('body', 'ar'),
+                    $notification->getTranslation('title', 'en') ?: $notification->getTranslation('title', 'ar'),
+                    $notification->getTranslation('body', 'en')  ?: $notification->getTranslation('body', 'ar'),
+                    $codes,
+                );
+            }
+
+            // Instructor IDs — store as `instr:<id>` codes for DB record keeping.
+            // No push: instructors are LMS-only accounts without HR device tokens.
+            if (!empty($instructorIds)) {
+                $instrCodes = array_map(
+                    static fn (int $id): string => 'instr:' . $id,
+                    array_unique($instructorIds),
+                );
+                $this->repo->insertUserRecords($notification->id, $instrCodes);
+            }
         }
 
         return $notification;

@@ -16,7 +16,10 @@ class InstructorRepository extends BaseRepository implements InstructorRepositor
     public function paginateWithSearch(int $perPage, ?string $search): LengthAwarePaginator
     {
         return $this->model->newQuery()
-            ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+                $q2->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", ["%{$search}%"])
+                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.ar')) LIKE ?", ["%{$search}%"]);
+            }))
             ->withCount('courses')
             ->latest()
             ->paginate($perPage);

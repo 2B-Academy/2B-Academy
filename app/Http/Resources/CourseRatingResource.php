@@ -15,7 +15,7 @@ class CourseRatingResource extends JsonResource
             'review'     => $this->review,
             'user'       => $this->whenLoaded('user', fn () => [
                 'id'           => $this->user->id,
-                'name'         => $this->user->name,
+                'name'         => $this->user->getLocalizedName(),
                 'machine_code' => $this->user->machine_code ?? null,
             ]),
             'course'     => $this->whenLoaded('course', fn () => [

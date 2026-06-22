@@ -107,13 +107,15 @@ class AdminUserService
         if ($search) {
             $needle = "%{$search}%";
             $query->where(function ($w) use ($needle) {
-                $w->where('p.name_en', 'LIKE', $needle)
-                  ->orWhere('p.name_ar', 'LIKE', $needle)
-                  ->orWhere('p.email',   'LIKE', $needle);
+                $w->where('p.name_en',       'LIKE', $needle)
+                  ->orWhere('p.name_ar',       'LIKE', $needle)
+                  ->orWhere('p.name_fallback', 'LIKE', $needle)
+                  ->orWhere('p.email',         'LIKE', $needle);
             });
         }
 
-        $query->orderBy('p.name_en');
+        // Sort by the best available name across all three tables/locales.
+        $query->orderByRaw('COALESCE(p.name_en, p.name_ar, p.name_fallback)');
 
         $page  = (int) (Paginator::resolveCurrentPage() ?: 1);
         $total = (clone $query)->count();
@@ -627,18 +629,20 @@ class AdminUserService
         $adminHasLastActive   = Schema::hasColumn('admins',      'last_active_at');
         $adminHasImage        = Schema::hasColumn('admins',      'image');
 
-        $nameEnExpr = $usersHasNameEn
-            ? 'COALESCE(NULLIF(name_en, ""), name) AS name_en'
-            : 'name AS name_en';
-        $nameArExpr = $usersHasNameAr
-            ? 'NULLIF(name_ar, "") AS name_ar'
-            : 'NULL AS name_ar';
+        // Expose raw bilingual columns without COALESCE-ing the Arabic fallback into
+        // name_en. The legacy `name` column (HR-synced, typically Arabic) is surfaced
+        // as `name_fallback` so the resource can use it as a last resort for both
+        // locales when neither name_en nor name_ar has been populated yet.
+        $nameEnExpr       = $usersHasNameEn ? 'NULLIF(name_en, "") AS name_en'       : 'NULL AS name_en';
+        $nameArExpr       = $usersHasNameAr ? 'NULLIF(name_ar, "") AS name_ar'       : 'NULL AS name_ar';
+        $nameFallbackExpr = 'name AS name_fallback';
 
         $usersSub = DB::table('users')
             ->selectRaw('"user" AS source')
             ->selectRaw('id')
             ->selectRaw($nameEnExpr)
             ->selectRaw($nameArExpr)
+            ->selectRaw($nameFallbackExpr)
             ->selectRaw('email AS email')
             ->selectRaw('phone AS phone')
             ->selectRaw('machine_code AS machine_code')
@@ -656,6 +660,7 @@ class AdminUserService
             // Stored as JSON {"en":"…","ar":"…"} via Spatie HasTranslations.
             ->selectRaw('COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")), "null"), name) AS name_en')
             ->selectRaw('NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar")), "null") AS name_ar')
+            ->selectRaw('NULL AS name_fallback')
             ->selectRaw('email AS email')
             ->selectRaw('NULL AS phone')
             ->selectRaw('NULL AS machine_code')
@@ -672,6 +677,7 @@ class AdminUserService
             ->selectRaw('id')
             ->selectRaw('name AS name_en')
             ->selectRaw('NULL AS name_ar')
+            ->selectRaw('NULL AS name_fallback')
             ->selectRaw('email AS email')
             ->selectRaw('NULL AS phone')
             ->selectRaw('NULL AS machine_code')

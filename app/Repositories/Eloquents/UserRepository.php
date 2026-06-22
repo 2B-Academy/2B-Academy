@@ -24,10 +24,12 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
             // "instructor" pill without firing a per-row query.
             ->with('roles:id,name')
             ->when($search, fn ($q) => $q->where(function ($inner) use ($search) {
-                $inner->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%")
-                    ->orWhere('machine_code', 'LIKE', "%{$search}%")
-                    ->orWhere('department_name', 'LIKE', "%{$search}%");
+                $inner->where('name',            'LIKE', "%{$search}%")
+                    ->orWhere('name_en',          'LIKE', "%{$search}%")
+                    ->orWhere('name_ar',          'LIKE', "%{$search}%")
+                    ->orWhere('email',            'LIKE', "%{$search}%")
+                    ->orWhere('machine_code',     'LIKE', "%{$search}%")
+                    ->orWhere('department_name',  'LIKE', "%{$search}%");
             }))
             // `role=instructor` → only users with the Spatie 'instructor' role.
             // `role=learner`    → every user is a learner by default in this

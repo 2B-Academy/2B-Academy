@@ -89,7 +89,7 @@ final class EnumRegistry
 
         // ── Inbox / Messages ───────────────────────────────────────────
         'inbox_tab' => [
-            'values' => ['all', 'unread', 'sent', 'resolved'],
+            'values' => ['all', 'unread', 'sent', 'received'],
         ],
 
         // ── Users (admin) ──────────────────────────────────────────────

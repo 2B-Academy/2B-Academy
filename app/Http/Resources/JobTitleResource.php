@@ -11,7 +11,7 @@ class JobTitleResource extends JsonResource
     {
         return [
             'id'                   => $this->id,
-            'name'                 => $this->name,
+            'name'                 => $this->getLocalizedName(),
             'qualifications_count' => $this->whenCounted('qualificationSkills'),
             /**
              * Read the aliased column directly: the repository projects

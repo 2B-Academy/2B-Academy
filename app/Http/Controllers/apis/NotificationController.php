@@ -115,11 +115,12 @@ class NotificationController extends ApiController
      */
     public function store(PublicNotificationRequest $request): JsonResponse
     {
-        $data      = $request->validated();
-        $userCodes = $data['user_codes'] ?? [];
-        unset($data['user_codes']);
+        $data          = $request->validated();
+        $userCodes     = $data['user_codes']    ?? [];
+        $instructorIds = $data['instructor_ids'] ?? [];
+        unset($data['user_codes'], $data['instructor_ids']);
 
-        $notification = $this->service->create($data, $userCodes);
+        $notification = $this->service->create($data, $userCodes, $instructorIds);
         return $this->created(__('messages.created'), new NotificationResource($notification));
     }
 

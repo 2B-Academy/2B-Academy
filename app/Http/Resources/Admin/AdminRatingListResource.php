@@ -32,7 +32,7 @@ class AdminRatingListResource extends JsonResource
 
             'user' => $this->whenLoaded('user', fn () => [
                 'id'           => $this->user->id,
-                'name'         => $this->user->name,
+                'name'         => $this->user->getLocalizedName(),
                 'machine_code' => $this->user->machine_code ?? null,
             ]),
 

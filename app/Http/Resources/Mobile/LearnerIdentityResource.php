@@ -46,13 +46,13 @@ class LearnerIdentityResource extends JsonResource
         return [
             'id'              => (int) $user->id,
             'machine_code'    => $user->machine_code,
-            'name'            => $user->name,
+            'name'            => $user->getLocalizedName(),
             'email'           => $user->email,
             'image'           => $this->absoluteUrl($user->image ?? null),
             'department_name' => $user->department_name,
             'job_title'       => $jobTitle ? [
                 'id'   => (int) $jobTitle->id,
-                'name' => $this->safeTranslate($jobTitle->name, $locale),
+                'name' => $jobTitle->getLocalizedName(),
             ] : null,
             'learner_type'    => $user->learner_type ?? null,
         ];

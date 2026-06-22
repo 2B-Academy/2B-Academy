@@ -45,8 +45,10 @@ class LmsResourceRequest extends FormRequest
 
         return [
             'title'                  => ['required', 'string', 'max:255'],
+            'title_ar'               => ['nullable', 'string', 'max:255'],
             'type'                   => ['required', 'in:article,link,file'],
             'content'                => ['nullable', 'string', 'required_if:type,article'],
+            'content_ar'             => ['nullable', 'string'],
             'url'                    => ['nullable', 'url', 'required_if:type,link'],
             'file'                   => $fileRules,
             'qualification_skill_id' => ['nullable', 'integer', 'exists:qualification_skills,id'],

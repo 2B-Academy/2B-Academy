@@ -17,14 +17,20 @@ class JobTitleRepository extends BaseRepository implements JobTitleRepositoryInt
 
     public function list(int $perPage, ?string $search): LengthAwarePaginator
     {
+        // Only count users who actually hold this job title (users.job_title_id = job_titles.id).
+        // Without this filter, users from other job titles enrolled in the same courses
+        // would inflate the count above the employees_count.
         $learnersSubQuery = DB::table('users_courses')
             ->selectRaw('COUNT(DISTINCT users_courses.user_id)')
+            ->join('users', 'users_courses.user_id', '=', 'users.id')
             ->join('course_qualification_skills', 'users_courses.course_id', '=', 'course_qualification_skills.course_id')
             ->join('job_title_qualification_skill', 'course_qualification_skills.qualification_skill_id', '=', 'job_title_qualification_skill.qualification_skill_id')
-            ->whereColumn('job_title_qualification_skill.job_title_id', 'job_titles.id');
+            ->whereColumn('job_title_qualification_skill.job_title_id', 'job_titles.id')
+            ->whereColumn('users.job_title_id', 'job_titles.id');
 
         /**
-         * Completed (learner, required-qualification) pairs.
+         * Completed (learner, required-qualification) pairs — scoped to
+         * employees of this job title only (same join as $learnersSubQuery).
          *
          * For every required qualification of this job title, count once
          * per learner who has finished any course that grants it. The
@@ -38,13 +44,19 @@ class JobTitleRepository extends BaseRepository implements JobTitleRepositoryInt
          */
         $completedQualsSubQuery = DB::table('users_courses')
             ->selectRaw('COUNT(DISTINCT CONCAT(users_courses.user_id, "-", job_title_qualification_skill.qualification_skill_id))')
+            ->join('users', 'users_courses.user_id', '=', 'users.id')
             ->join('course_qualification_skills', 'users_courses.course_id', '=', 'course_qualification_skills.course_id')
             ->join('job_title_qualification_skill', 'course_qualification_skills.qualification_skill_id', '=', 'job_title_qualification_skill.qualification_skill_id')
             ->whereColumn('job_title_qualification_skill.job_title_id', 'job_titles.id')
+            ->whereColumn('users.job_title_id', 'job_titles.id')
             ->whereColumn('users_courses.updated_at', '>', 'users_courses.created_at');
 
         return $this->model->newQuery()
-            ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+                $q2->where('name',    'LIKE', "%{$search}%")
+                   ->orWhere('name_en', 'LIKE', "%{$search}%")
+                   ->orWhere('name_ar', 'LIKE', "%{$search}%");
+            }))
             ->withCount(['qualificationSkills', 'users as employees_count'])
             ->addSelect([
                 'job_titles.*',

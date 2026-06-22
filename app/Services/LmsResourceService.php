@@ -13,7 +13,10 @@ class LmsResourceService
     {
         return LmsResource::query()
             ->with(['qualificationSkill:id,name', 'createdByAdmin:id,name'])
-            ->when($search, fn ($q) => $q->where('title', 'LIKE', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+                $q2->where('title',    'LIKE', "%{$search}%")
+                   ->orWhere('title_ar', 'LIKE', "%{$search}%");
+            }))
             ->when($type, fn ($q) => $q->where('type', $type))
             ->latest()
             ->paginate($perPage);
@@ -69,8 +72,10 @@ class LmsResourceService
     {
         $payload = [
             'title'                  => $data['title'],
+            'title_ar'               => $data['title_ar'] ?? null,
             'type'                   => $data['type'],
             'content'                => $data['content'] ?? null,
+            'content_ar'             => $data['content_ar'] ?? null,
             'url'                    => $data['url'] ?? null,
             'qualification_skill_id' => $data['qualification_skill_id'] ?? null,
             'created_by_admin_id'    => $adminId,

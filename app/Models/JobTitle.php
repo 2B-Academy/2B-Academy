@@ -12,7 +12,7 @@ class JobTitle extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'name_ar', 'name_en'];
 
     public function qualificationSkills(): BelongsToMany
     {
@@ -39,5 +39,23 @@ class JobTitle extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'job_title_id');
+    }
+
+    /**
+     * Return the display name resolved for the current application locale.
+     *
+     * `name` is the HR-synced value (typically Arabic).
+     * Priority (AR): name_ar → name
+     * Priority (EN): name_en → name
+     */
+    public function getLocalizedName(): string
+    {
+        $locale = app()->getLocale();
+
+        if ($locale === 'ar') {
+            return (string) ($this->name_ar ?: $this->name);
+        }
+
+        return (string) ($this->name_en ?: $this->name);
     }
 }

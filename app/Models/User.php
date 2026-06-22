@@ -95,4 +95,24 @@ class User extends Authenticatable
     {
         return $this->belongsTo(JobTitle::class, 'job_title_id');
     }
+
+    /**
+     * Return the display name resolved for the current application locale.
+     *
+     * Priority (AR): name_ar → name_en → name
+     * Priority (EN): name_en → name_ar → name
+     */
+    public function getLocalizedName(): string
+    {
+        $locale  = app()->getLocale();
+        $nameEn  = (string) ($this->name_en ?? '');
+        $nameAr  = (string) ($this->name_ar ?? '');
+        $nameFallback = (string) ($this->name ?? '');
+
+        if ($locale === 'ar') {
+            return $nameAr ?: $nameEn ?: $nameFallback;
+        }
+
+        return $nameEn ?: $nameAr ?: $nameFallback;
+    }
 }

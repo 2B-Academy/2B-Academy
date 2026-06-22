@@ -10,7 +10,7 @@ class AdminMessageRecipient extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['admin_message_id', 'user_id', 'read_at'];
+    protected $fillable = ['admin_message_id', 'user_id', 'instructor_id', 'read_at'];
 
     protected $casts = [
         'read_at' => 'datetime',
@@ -24,5 +24,10 @@ class AdminMessageRecipient extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function instructor(): BelongsTo
+    {
+        return $this->belongsTo(Instructor::class);
     }
 }

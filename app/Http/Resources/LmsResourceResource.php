@@ -13,8 +13,10 @@ class LmsResourceResource extends JsonResource
         return [
             'id'            => $this->id,
             'title'         => $this->title,
+            'title_ar'      => $this->title_ar,
             'type'          => $this->type,
             'content'       => $this->content,
+            'content_ar'    => $this->content_ar,
             'url'           => $this->url,
             'file_path'     => $this->file_path
                 ? Storage::disk('public')->url($this->file_path)

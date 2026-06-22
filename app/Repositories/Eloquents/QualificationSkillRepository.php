@@ -23,7 +23,10 @@ class QualificationSkillRepository extends BaseRepository implements Qualificati
             ->whereColumn('course_qualification_skills.qualification_skill_id', 'qualification_skills.id');
 
         return $this->model->newQuery()
-            ->when($search, fn ($q) => $q->where('name', 'LIKE', "%{$search}%"))
+            ->when($search, fn ($q) => $q->where(function ($q2) use ($search) {
+                $q2->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", ["%{$search}%"])
+                   ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.ar')) LIKE ?", ["%{$search}%"]);
+            }))
             ->withCount('courses')
             ->addSelect(['qualification_skills.*', DB::raw("({$enrolledSubQuery->toSql()}) as enrolled_count")])
             ->mergeBindings($enrolledSubQuery)
