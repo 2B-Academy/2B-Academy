@@ -159,11 +159,13 @@ class CourseService
         if ($section === null) {
             // Seed the very first cohort with a sensible default name
             // ("Cohort 1") so the table on the Course Detail page has
-            // something to render before the admin renames it.
+            // something to render before the admin renames it. It inherits
+            // the course's planned session count as its editable default.
             CourseSection::create(array_merge($payload, [
-                'course_id' => $course->id,
-                'name'      => ['en' => 'Cohort 1', 'ar' => 'الدفعة 1'],
-                'status'    => 'scheduled',
+                'course_id'          => $course->id,
+                'name'               => ['en' => 'Cohort 1', 'ar' => 'الدفعة 1'],
+                'status'             => 'scheduled',
+                'number_of_sessions' => $course->number_of_sessions,
             ]));
             return;
         }

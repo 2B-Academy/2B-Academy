@@ -42,7 +42,7 @@ return [
         'video'    => 'فيديو',
         'document' => 'مستند',
         'article'  => 'مقال',
-        'link'     => 'رابط',
+        'link'     => 'رابط خارجي',
     ],
 
     'module_learner_scope' => [

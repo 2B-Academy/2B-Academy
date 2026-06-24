@@ -22,6 +22,10 @@ class CourseSection extends Model
         'start_date'       => 'date',
         'end_date'         => 'date',
         'capacity'         => 'integer',
+        // Planned session count for this cohort (defaults from the parent
+        // course, editable per cohort). Once this many sessions have been
+        // held the cohort flips to `completed` — see Course::deriveCohortStatus.
+        'number_of_sessions' => 'integer',
         // Average session length in HOURS (decimal). Drives the live
         // attendance-window length when a session is started for this cohort.
         'avg_session_time' => 'decimal:2',

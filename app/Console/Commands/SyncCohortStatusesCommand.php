@@ -45,21 +45,34 @@ class SyncCohortStatusesCommand extends Command
         $courseUpdates  = 0;
 
         // ── 1. Update cohort statuses ────────────────────────────────
+        // Cohorts with a date window OR a session target are eligible —
+        // session-targeted cohorts complete once enough sessions are held
+        // even without an end date.
         CourseSection::query()
-            ->select(['id', 'course_id', 'start_date', 'end_date', 'status'])
-            ->whereNotNull('start_date')
-            ->whereNotNull('end_date')
+            ->select(['id', 'course_id', 'start_date', 'end_date', 'status', 'number_of_sessions'])
+            ->withCount(['sessions as held_sessions_count' => fn ($q) => $q->ended()])
+            ->where(function ($q) {
+                $q->where(function ($w) {
+                    $w->whereNotNull('start_date')->whereNotNull('end_date');
+                })->orWhere('number_of_sessions', '>', 0);
+            })
             ->orderBy('id')
             ->chunkById(500, function ($chunk) use ($today, $dryRun, &$sectionUpdates) {
                 foreach ($chunk as $section) {
                     $next = Course::deriveCohortStatus(
                         $section->status,
-                        $section->start_date instanceof Carbon
-                            ? $section->start_date
-                            : Carbon::parse($section->start_date),
-                        $section->end_date instanceof Carbon
-                            ? $section->end_date
-                            : Carbon::parse($section->end_date),
+                        $section->start_date
+                            ? ($section->start_date instanceof Carbon
+                                ? $section->start_date
+                                : Carbon::parse($section->start_date))
+                            : null,
+                        $section->end_date
+                            ? ($section->end_date instanceof Carbon
+                                ? $section->end_date
+                                : Carbon::parse($section->end_date))
+                            : null,
+                        $section->number_of_sessions !== null ? (int) $section->number_of_sessions : null,
+                        (int) ($section->held_sessions_count ?? 0),
                     );
 
                     if ($next === $section->status) {
@@ -97,7 +110,8 @@ class SyncCohortStatusesCommand extends Command
                 // tripping N+1s.
                 $sectionsByCourse = CourseSection::query()
                     ->whereIn('course_id', $courseIds)
-                    ->get(['id', 'course_id', 'start_date', 'end_date', 'status'])
+                    ->withCount(['sessions as held_sessions_count' => fn ($q) => $q->ended()])
+                    ->get(['id', 'course_id', 'start_date', 'end_date', 'status', 'number_of_sessions'])
                     ->groupBy('course_id');
 
                 foreach ($chunk as $course) {
@@ -119,7 +133,14 @@ class SyncCohortStatusesCommand extends Command
                             ? $section->end_date
                             : ($section->end_date ? Carbon::parse($section->end_date) : null);
 
-                        if (Course::deriveCohortStatus($section->status, $start, $end) === 'active') {
+                        $derived = Course::deriveCohortStatus(
+                            $section->status,
+                            $start,
+                            $end,
+                            $section->number_of_sessions !== null ? (int) $section->number_of_sessions : null,
+                            (int) ($section->held_sessions_count ?? 0),
+                        );
+                        if ($derived === 'active') {
                             $effectiveActive = true;
                             break;
                         }

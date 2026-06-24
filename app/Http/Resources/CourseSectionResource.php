@@ -20,10 +20,23 @@ class CourseSectionResource extends JsonResource
         // here — `php artisan cohorts:sync-statuses` is the source of
         // truth for the stored value, this resource just keeps reads
         // live in between cron runs.
+        // Count sessions already held for this cohort. Prefer the
+        // eager-loaded `held_sessions_count` (set by the repository) and
+        // fall back to a fresh query for hand-built models.
+        $heldSessions = $this->held_sessions_count !== null
+            ? (int) $this->held_sessions_count
+            : (int) $this->sessions()->ended()->count();
+
+        $numberOfSessions = $this->number_of_sessions !== null
+            ? (int) $this->number_of_sessions
+            : null;
+
         $effectiveStatus = Course::deriveCohortStatus(
             $this->status,
             $this->start_date,
             $this->end_date,
+            $numberOfSessions,
+            $heldSessions,
         );
 
         return [
@@ -41,6 +54,10 @@ class CourseSectionResource extends JsonResource
             'start_date'     => $this->start_date?->format('Y-m-d'),
             'end_date'       => $this->end_date?->format('Y-m-d'),
             'capacity'       => $this->capacity !== null ? (int) $this->capacity : null,
+            // Planned session count (Figma 332:10708). Shown in the cohort
+            // table "Sessions" column and drives session-based completion.
+            'number_of_sessions' => $numberOfSessions,
+            'held_sessions_count' => $heldSessions,
             'status'         => $effectiveStatus,
             'stored_status'  => $this->status ?? 'scheduled',
             // Average session length in hours (drives the live attendance

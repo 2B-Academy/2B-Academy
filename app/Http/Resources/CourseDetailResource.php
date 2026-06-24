@@ -88,6 +88,11 @@ class CourseDetailResource extends JsonResource
             'hours'              => $this->hours,
             'max_learners'       => $maxLearners,
             'max_learners_override' => $this->max_learners,
+            // Planned session count — read-only on the course; each new
+            // cohort defaults to this value (Figma 321:7349 / 332:10708).
+            'number_of_sessions' => $this->number_of_sessions !== null
+                ? (int) $this->number_of_sessions
+                : null,
             'language'           => $this->language,
             'level'              => $this->level,
             'price'              => $this->price,

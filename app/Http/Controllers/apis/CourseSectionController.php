@@ -223,6 +223,10 @@ class CourseSectionController extends ApiController
             // calendar drives `active`/`completed`. We still accept the
             // derived values so a round-tripped edit doesn't 422.
             'status'      => 'nullable|string|in:scheduled,open_for_enrollment,active,completed,inactive',
+            // Planned session count for this cohort. Defaults from the
+            // parent course on create; editable per cohort. Drives
+            // session-based completion (see Course::deriveCohortStatus).
+            'number_of_sessions' => 'nullable|integer|min:1|max:1000',
             // Average session length in hours (e.g. 1.5). Drives the live
             // attendance-window length for this cohort's sessions.
             'avg_session_time' => 'nullable|numeric|min:0.25|max:24',

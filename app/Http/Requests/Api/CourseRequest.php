@@ -88,6 +88,12 @@ class CourseRequest extends FormRequest
             'currency'                => 'nullable|string|max:10',
             'hours'                   => 'required|integer|min:1',
             'max_learners'            => 'nullable|integer|min:1|max:10000',
+            // Planned session count (Figma 321:7349). Mandatory when the
+            // course is first created, then read-only — the Edit Course
+            // dialog never sends it, so it's optional on update.
+            'number_of_sessions'      => $this->isMethod('post')
+                ? 'required|integer|min:1|max:1000'
+                : 'nullable|integer|min:1|max:1000',
             'language'                => 'nullable|string|max:50',
             'level'                   => 'nullable|in:beginner,intermediate,professional',
             'certificate'             => 'required|boolean',
@@ -100,13 +106,15 @@ class CourseRequest extends FormRequest
             'instructors.*'           => 'required|exists:instructors,id',
             'qualification_skill_ids' => 'nullable|array',
             'qualification_skill_ids.*' => 'integer|distinct|exists:qualification_skills,id',
-            // Optional cohort window: when present, the controller
-            // upserts the course's *first* cohort (course_sections row)
-            // so the calendar can drive status. Both can be sent
-            // independently — the service treats them as a window
-            // that defaults to "open-ended" on the missing side.
-            'cohort_start'            => 'nullable|date_format:Y-m-d',
-            'cohort_end'              => 'nullable|date_format:Y-m-d|after_or_equal:cohort_start',
+            // Cohort window. Mandatory on course creation (Figma 321:7349
+            // marks both dates required); optional on update so editing an
+            // older course without a cohort window doesn't 422.
+            'cohort_start'            => $this->isMethod('post')
+                ? 'required|date_format:Y-m-d'
+                : 'nullable|date_format:Y-m-d',
+            'cohort_end'              => $this->isMethod('post')
+                ? 'required|date_format:Y-m-d|after_or_equal:cohort_start'
+                : 'nullable|date_format:Y-m-d|after_or_equal:cohort_start',
         ];
     }
 }

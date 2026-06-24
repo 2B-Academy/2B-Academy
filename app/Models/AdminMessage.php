@@ -11,7 +11,11 @@ class AdminMessage extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['admin_id', 'subject', 'body'];
+    protected $fillable = ['admin_id', 'subject', 'body', 'audience'];
+
+    protected $casts = [
+        'audience' => 'array',
+    ];
 
     public function admin(): BelongsTo
     {

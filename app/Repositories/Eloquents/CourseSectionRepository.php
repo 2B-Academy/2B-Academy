@@ -21,7 +21,12 @@ class CourseSectionRepository extends BaseRepository implements CourseSectionRep
         // Cohort tab can render "Enrolled / Capacity" without an N+1.
         // `users_courses.group_id` points at `course_sections.id`.
         return $course->sections()
-            ->withCount(['enrollments as enrolled_count'])
+            ->withCount([
+                'enrollments as enrolled_count',
+                // Sessions already held — drives session-based completion
+                // in CourseSectionResource without an N+1 per cohort.
+                'sessions as held_sessions_count' => fn ($q) => $q->ended(),
+            ])
             ->orderBy('id')
             ->get();
     }

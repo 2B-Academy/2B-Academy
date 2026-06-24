@@ -17,6 +17,13 @@ class Course extends Model
 
     protected $guarded = ['id'];
 
+    protected $casts = [
+        // Planned session count captured at course creation (Figma
+        // 321:7349). Read-only on the course afterwards — cohorts inherit
+        // it as their editable default.
+        'number_of_sessions' => 'integer',
+    ];
+
     public function scopeActive($q)
     {
         return $q->whereActive(true);
@@ -137,41 +144,61 @@ class Course extends Model
      *   - today < start_date            → `scheduled` | `open_for_enrollment`
      *                                      (the admin's manual pre-start
      *                                      enrolment-window choice is kept)
-     *   - start_date ≤ today ≤ end_date → `active`
-     *   - today > end_date              → `completed`
-     *   - no dates                      → fall back to stored status
+     *   - held sessions ≥ target        → `completed`  (session-driven)
+     *   - today > end_date (no target)  → `completed`  (legacy date-driven)
+     *   - otherwise (started)           → `active`
+     *   - no dates / no target          → fall back to stored status
+     *
+     * Session-driven completion: when a cohort has a configured
+     * `number_of_sessions` target, it flips to `completed` once that many
+     * sessions have actually been *held* (date/time elapsed). Raising the
+     * target re-opens the cohort (held < target ⇒ `active` again). When no
+     * target is set we fall back to the original end-date rule so legacy
+     * cohorts keep working unchanged.
      *
      * Kept on the Course model (rather than CourseSection) so other
      * services like AdminReportService can derive cohort status without
      * dragging in extra dependencies.
      */
-    public static function deriveCohortStatus(?string $storedStatus, ?Carbon $startDate, ?Carbon $endDate): string
-    {
+    public static function deriveCohortStatus(
+        ?string $storedStatus,
+        ?Carbon $startDate,
+        ?Carbon $endDate,
+        ?int $numberOfSessions = null,
+        ?int $heldSessions = null,
+    ): string {
         if ($storedStatus === 'inactive') {
             return 'inactive';
         }
 
-        if ($startDate === null && $endDate === null) {
-            // No window provided — respect whatever was persisted last.
-            // Defaults to `scheduled` for newly-seeded cohorts that
-            // predate the start/end columns.
-            return $storedStatus ?: 'scheduled';
-        }
-
         $today = Carbon::today();
 
+        // Before the cohort starts the only two meaningful states are
+        // the manual enrolment-window choices; `open_for_enrollment`
+        // is surfaced as-is so it can drive earlier app visibility,
+        // everything else collapses to `scheduled`.
         if ($startDate !== null && $today->lt($startDate)) {
-            // Before the cohort starts the only two meaningful states are
-            // the manual enrolment-window choices; `open_for_enrollment`
-            // is surfaced as-is so it can drive earlier app visibility,
-            // everything else collapses to `scheduled`.
             return $storedStatus === 'open_for_enrollment'
                 ? 'open_for_enrollment'
                 : 'scheduled';
         }
 
-        if ($endDate !== null && $today->gt($endDate)) {
+        // Completion. Session-driven when a target is configured, else
+        // the original end-date rule.
+        if ($numberOfSessions !== null && $numberOfSessions > 0) {
+            if (($heldSessions ?? 0) >= $numberOfSessions) {
+                return 'completed';
+            }
+        } elseif ($endDate !== null && $today->gt($endDate)) {
             return 'completed';
+        }
+
+        // No window AND no session target → respect whatever was persisted
+        // last. Defaults to `scheduled` for newly-seeded cohorts that
+        // predate the start/end columns.
+        if ($startDate === null && $endDate === null
+            && ($numberOfSessions === null || $numberOfSessions <= 0)) {
+            return $storedStatus ?: 'scheduled';
         }
 
         return 'active';

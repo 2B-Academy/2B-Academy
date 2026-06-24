@@ -34,6 +34,18 @@ class AdminMessageController extends ApiController
     }
 
     /**
+     * Recipient catalog for the compose dialog: the "Learners" group plus
+     * one group per admin-guard role that has Learning-Operations access.
+     */
+    public function recipients(): JsonResponse
+    {
+        return $this->success(
+            __('messages.retrieved'),
+            $this->service->recipientCatalog(),
+        );
+    }
+
+    /**
      * Show a single message with recipients (admin only).
      */
     public function show(AdminMessage $message): JsonResponse
@@ -45,33 +57,37 @@ class AdminMessageController extends ApiController
     }
 
     /**
-     * Create a new admin message with recipients (admin only).
+     * Create a new admin message, fanned out to the selected recipient
+     * groups (learners + admin roles).
      */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'subject'           => ['required', 'string', 'max:191'],
-            'body'              => ['required', 'string'],
-            'recipient_ids'     => ['nullable', 'array'],
-            'recipient_ids.*'   => ['integer', 'exists:users,id'],
-            'instructor_ids'    => ['nullable', 'array'],
-            'instructor_ids.*'  => ['integer', 'exists:instructors,id'],
+            'subject'          => ['required', 'string', 'max:191'],
+            'body'             => ['required', 'string'],
+            'groups'           => ['required', 'array', 'min:1'],
+            'groups.*.type'    => ['required', 'in:learner,role'],
+            'groups.*.all'     => ['nullable', 'boolean'],
+            'groups.*.role_id' => ['nullable', 'integer'],
+            'groups.*.ids'     => ['nullable', 'array'],
+            'groups.*.ids.*'   => ['integer'],
         ]);
-
-        // At least one recipient type must be provided.
-        $hasRecipients = !empty($data['recipient_ids']) || !empty($data['instructor_ids']);
-        if (! $hasRecipients) {
-            return response()->json(['message' => __('validation.required', ['attribute' => 'recipients'])], 422);
-        }
 
         $message = $this->service->create($data, $request->user()->id);
 
+        // Reject empty fan-outs (e.g. groups that resolved to nobody).
+        if ($message->recipients()->count() === 0) {
+            $message->delete();
+
+            return response()->json(
+                ['message' => __('validation.required', ['attribute' => 'recipients'])],
+                422,
+            );
+        }
+
         return $this->created(
             __('messages.created'),
-            new AdminMessageResource($message->load('admin:id,name')->loadCount([
-                'recipients as total_recipients',
-                'recipients as read_count' => fn ($q) => $q->whereNotNull('read_at'),
-            ])),
+            new AdminMessageResource($this->service->show($message)),
         );
     }
 

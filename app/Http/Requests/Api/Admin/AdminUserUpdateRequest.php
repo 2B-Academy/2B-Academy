@@ -41,6 +41,10 @@ class AdminUserUpdateRequest extends FormRequest
                 'sometimes', 'nullable',
                 Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', 'admin')),
             ],
+            // Optional on edit — leave blank to keep the current password.
+            // `confirmed` only fires when a value is supplied.
+            'password'              => ['sometimes', 'nullable', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['sometimes', 'nullable', 'string'],
             'department_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone'           => ['sometimes', 'nullable', 'string', 'max:50'],
             'learner_type'    => ['sometimes', 'nullable', Rule::in(['online', 'offline', 'hybrid'])],

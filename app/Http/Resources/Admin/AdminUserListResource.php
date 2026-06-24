@@ -60,8 +60,14 @@ class AdminUserListResource extends JsonResource
             'image'                  => $imageUrl ?: null,
             'role'                   => (string) ($row->role_label ?? 'Learner'),
             'role_key'               => (string) ($row->role_key   ?? 'learner'),
+            // Real Spatie role machine name + configured colour (teal/green/
+            // orange/red/blue) so the badge + filter pills render per-role.
+            'role_machine'           => (string) ($row->role_machine ?? ($row->role_key ?? 'learner')),
+            'role_color'             => (string) ($row->role_color   ?? 'teal'),
             'status'                 => (string) ($row->status     ?? 'active'),
-            'last_active_at'         => $row->last_active_at ? (string) $row->last_active_at : null,
+            // Emit ISO-8601 so the frontend date pipe parses reliably across
+            // browsers (a raw "Y-m-d H:i:s" string is rejected by Safari).
+            'last_active_at'         => $this->toIso($row->last_active_at ?? null),
             'compliance_pct'         => $compliance,
             'has_compliance'         => $compliance !== null,
             'enrolled_courses_count' => (int) ($row->enrolled_courses_count ?? 0),
@@ -74,5 +80,19 @@ class AdminUserListResource extends JsonResource
     {
         $first = mb_substr(trim($name), 0, 1);
         return $first === '' ? 'U' : mb_strtoupper($first);
+    }
+
+    /** Normalise a datetime value to an ISO-8601 string (or null). */
+    private function toIso($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($value)->toIso8601String();
+        } catch (\Throwable) {
+            return (string) $value;
+        }
     }
 }

@@ -48,7 +48,7 @@ return [
         'video'    => 'Video',
         'document' => 'Document',
         'article'  => 'Article',
-        'link'     => 'Link',
+        'link'     => 'External Link',
     ],
 
     'module_learner_scope' => [

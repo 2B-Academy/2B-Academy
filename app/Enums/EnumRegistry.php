@@ -33,7 +33,10 @@ final class EnumRegistry
             'values' => ['online', 'offline', 'hybrid', 'external_link'],
         ],
         'course_status' => [
-            'values' => ['all', 'pending', 'active', 'upcoming', 'inactive'],
+            // `pending` was removed from the Courses page tabs (Figma
+            // 276:5232) — status is fully derived from cohort dates, so
+            // there is no pending workflow state to surface.
+            'values' => ['all', 'active', 'upcoming', 'inactive'],
         ],
         'course_level' => [
             'values' => ['beginner', 'intermediate', 'professional'],
@@ -88,8 +91,9 @@ final class EnumRegistry
         ],
 
         // ── Inbox / Messages ───────────────────────────────────────────
+        // New inbox flow (Figma): three viewer-centric tabs only.
         'inbox_tab' => [
-            'values' => ['all', 'unread', 'sent', 'received'],
+            'values' => ['unread', 'received', 'sent'],
         ],
 
         // ── Users (admin) ──────────────────────────────────────────────

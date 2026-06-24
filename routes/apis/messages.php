@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Route;
 // Admin-only routes
 Route::middleware(['auth.user', 'role:Admin'])->group(function () {
     Route::get('messages',                         [AdminMessageController::class, 'index']);
+    // NOTE: keep `recipients` BEFORE the `{message}` wildcard so it is not
+    // swallowed as a model-bound id.
+    Route::get('messages/recipients',              [AdminMessageController::class, 'recipients']);
     Route::post('messages',                        [AdminMessageController::class, 'store']);
     Route::get('messages/{message}',               [AdminMessageController::class, 'show']);
     Route::patch('messages/{message}/mark-all-read', [AdminMessageController::class, 'markAllRead']);

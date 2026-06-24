@@ -123,6 +123,8 @@ class AdminUserService
 
         // Attach computed compliance % for the learner rows.
         $rows = $this->attachCompliance($rows);
+        // Resolve each row's real (Spatie) role + colour for the badge/filter.
+        $rows = $this->attachRoles($rows);
 
         return new PaginatorImpl(
             items:       $rows,
@@ -201,16 +203,18 @@ class AdminUserService
             ->where('guard_name', 'admin')
             ->orderByDesc('is_system')
             ->orderBy('name_en')
-            ->get(['name', 'name_en', 'name_ar']);
+            ->get(['name', 'name_en', 'name_ar', 'color']);
 
         // Counts come from the underlying person table for bucketed
         // system roles (admin/instructor/learner) and from the Spatie
-        // pivot for everything else.
+        // pivot for everything else. `color` lets the Figma filter pills
+        // (and the table role badge) render each role in its own colour.
         $roles = $roleRows->map(function ($r) use ($locale) {
             $key = (string) $r->name;
             return [
                 'key'   => $key,
                 'label' => $this->labelForRoleRow($r, $locale),
+                'color' => (string) ($r->color ?? 'teal'),
                 'count' => $this->countUsersInRole($key),
             ];
         })->values()->all();
@@ -333,6 +337,7 @@ class AdminUserService
         }
 
         $rows = $this->attachCompliance(collect([$row]));
+        $rows = $this->attachRoles($rows);
 
         return $rows->first();
     }
@@ -371,10 +376,13 @@ class AdminUserService
                 default               => $this->createLearner($data, $image),
             };
 
-            // For non-bucketed roles, attach the Spatie role so the
-            // permissions take effect (we still parked the row in the
-            // `users` table as the default learner bucket).
-            if (! in_array($role, self::BUCKETED_ROLES, true) && $role !== '' && $role !== 'superAdmin') {
+            // Attach the chosen Spatie role so permissions take effect and
+            // the role chip resolves to its real name/colour. Admins carry
+            // their back-office role (admin/superAdmin/custom); learners
+            // only get a pivot row for non-bucketed custom roles.
+            $shouldAssign = $created['source'] === 'admin'
+                || (! in_array($role, self::BUCKETED_ROLES, true) && $role !== '');
+            if ($shouldAssign) {
                 $model = $this->modelInstance($created['source'], $created['id']);
                 if (method_exists($model, 'assignRole')) {
                     try { $model->assignRole($role); } catch (\Throwable $e) { /* no-op */ }
@@ -392,7 +400,7 @@ class AdminUserService
     {
         $systemId = $this->allocateSystemId();
 
-        $user = User::query()->create([
+        $attributes = [
             'system_id'       => $systemId,
             'name'            => $data['name_en'],
             'name_en'         => $data['name_en'],
@@ -404,7 +412,12 @@ class AdminUserService
             'machine_code'    => Str::upper(Str::random(4)),
             'status'          => 'active',
             'image'           => $image ? $this->uploadRequestFile('users', null, null, $image) : null,
-        ]);
+        ];
+        if (! empty($data['password']) && Schema::hasColumn('users', 'password')) {
+            $attributes['password'] = bcrypt($data['password']);
+        }
+
+        $user = User::query()->create($attributes);
 
         return ['source' => 'user', 'id' => (int) $user->id];
     }
@@ -414,13 +427,18 @@ class AdminUserService
      */
     private function createInstructor(array $data, ?UploadedFile $image = null): array
     {
-        $instructor = Instructor::query()->create([
+        $attributes = [
             'name'           => ['en' => $data['name_en'], 'ar' => $data['name_ar']],
             'email'          => $data['email'],
             'image'          => $image ? $this->uploadRequestFile('instructors', null, null, $image) : null,
             'bio'            => '',
             'status'         => 'active',
-        ]);
+        ];
+        if (! empty($data['password']) && Schema::hasColumn('instructors', 'password')) {
+            $attributes['password'] = bcrypt($data['password']);
+        }
+
+        $instructor = Instructor::query()->create($attributes);
 
         return ['source' => 'instructor', 'id' => (int) $instructor->id];
     }
@@ -436,7 +454,9 @@ class AdminUserService
         $admin = new Admin();
         $admin->name              = $data['name_en'];
         $admin->email             = $data['email'];
-        $admin->password          = bcrypt(Str::random(24));
+        // Password comes from the Add User form (replacing the legacy
+        // Controllers screen); fall back to a random secret if omitted.
+        $admin->password          = bcrypt(! empty($data['password']) ? $data['password'] : Str::random(24));
         if (Schema::hasColumn('admins', 'status')) { $admin->status = 'active'; }
         if (Schema::hasColumn('admins', 'image') && $image) {
             $admin->image = $this->uploadRequestFile('admins', null, null, $image);
@@ -469,13 +489,17 @@ class AdminUserService
                 'admin'      => $this->updateAdmin($id, $data, $image),
             };
 
-            // Custom-role re-assignment: when the admin picks a
-            // non-bucketed role in the Edit modal we sync the Spatie
-            // pivot. Bucketed roles can't be changed in-place (they'd
-            // require moving the row across person tables) so we leave
-            // them to a future migration tool.
+            // Role re-assignment: sync the Spatie pivot when a role is
+            // supplied. Admins can switch between back-office roles
+            // (admin/superAdmin/custom); learners sync custom roles.
+            // Bucketed cross-table moves (learner↔instructor) are left to
+            // a future migration tool.
             $role = (string) ($data['role'] ?? '');
-            if ($role !== '' && ! in_array($role, self::BUCKETED_ROLES, true) && $role !== 'superAdmin') {
+            $shouldSync = $role !== '' && (
+                $source === 'admin'
+                || ! in_array($role, self::BUCKETED_ROLES, true)
+            );
+            if ($shouldSync) {
                 $model = $this->modelInstance($source, $id);
                 if (method_exists($model, 'syncRoles')) {
                     try { $model->syncRoles([$role]); } catch (\Throwable $e) { /* no-op */ }
@@ -504,7 +528,16 @@ class AdminUserService
         }
 
         if (!empty($payload)) {
-            $user->fill($payload)->save();
+            $user->fill($payload);
+        }
+
+        // Set password directly to bypass any mass-assignment guard.
+        if (! empty($data['password']) && Schema::hasColumn('users', 'password')) {
+            $user->password = bcrypt($data['password']);
+        }
+
+        if ($user->isDirty()) {
+            $user->save();
         }
     }
 
@@ -530,6 +563,10 @@ class AdminUserService
             $instructor->image = $this->uploadRequestFile('instructors', null, null, $image);
         }
 
+        if (! empty($data['password']) && Schema::hasColumn('instructors', 'password')) {
+            $instructor->password = bcrypt($data['password']);
+        }
+
         $instructor->save();
     }
 
@@ -545,6 +582,9 @@ class AdminUserService
         }
         if (array_key_exists('status', $data) && Schema::hasColumn('admins', 'status')) {
             $admin->status = $data['status'];
+        }
+        if (! empty($data['password'])) {
+            $admin->password = bcrypt($data['password']);
         }
         if ($image && Schema::hasColumn('admins', 'image')) {
             $admin->image = $this->uploadRequestFile('admins', null, null, $image);
@@ -745,6 +785,100 @@ class AdminUserService
 
             return $r;
         });
+    }
+
+    /**
+     * Resolve each row's *real* role (the Spatie role attached via
+     * `model_has_roles`, falling back to the source's default bucket) and
+     * its colour, so the table can render "Super Admin" / "Reports Viewer"
+     * in their configured colours rather than a flat bucket label.
+     *
+     * @template T of \Illuminate\Support\Collection
+     * @param   T  $rows
+     * @return  T
+     */
+    private function attachRoles(\Illuminate\Support\Collection $rows): \Illuminate\Support\Collection
+    {
+        $locale = app()->getLocale();
+
+        // Every admin-guard role keyed by machine name (label + colour).
+        $roleMeta = DB::table('roles')
+            ->where('guard_name', 'admin')
+            ->get(['name', 'name_en', 'name_ar', 'color'])
+            ->keyBy('name');
+
+        // Group the page's ids by their backing model class so we can batch
+        // the Spatie pivot lookups (one query per source).
+        $idsByClass = [];
+        foreach ($rows as $r) {
+            $cls = $this->modelClassFor((string) $r->source);
+            $idsByClass[$cls][] = (int) $r->id;
+        }
+
+        $assigned = []; // "source:id" => role machine name
+        foreach ($idsByClass as $cls => $ids) {
+            if (empty($ids)) {
+                continue;
+            }
+            $source = $this->sourceForModelClass($cls);
+            $pivot  = DB::table('model_has_roles as mhr')
+                ->join('roles as r', 'r.id', '=', 'mhr.role_id')
+                ->where('mhr.model_type', $cls)
+                ->whereIn('mhr.model_id', $ids)
+                ->where('r.guard_name', 'admin')
+                ->orderByDesc('r.is_system')
+                ->get(['mhr.model_id', 'r.name']);
+
+            foreach ($pivot as $p) {
+                $key = $source . ':' . (int) $p->model_id;
+                // First match wins (system roles sorted first).
+                $assigned[$key] ??= (string) $p->name;
+            }
+        }
+
+        return $rows->map(function ($r) use ($roleMeta, $assigned, $locale) {
+            $key      = $r->source . ':' . (int) $r->id;
+            $roleName = $assigned[$key] ?? $this->defaultRoleNameForSource((string) $r->source);
+            $meta     = $roleMeta[$roleName] ?? null;
+
+            $r->role_machine = $roleName;
+            $r->role_label   = $meta
+                ? $this->labelForRoleRow($meta, $locale)
+                : ($r->role_label ?? ucfirst($roleName));
+            $r->role_color   = $meta->color ?? $this->fallbackColor((string) $r->source);
+
+            return $r;
+        });
+    }
+
+    /** Default role machine name when a row has no explicit Spatie role. */
+    private function defaultRoleNameForSource(string $source): string
+    {
+        return match ($source) {
+            'admin'      => 'admin',
+            'instructor' => 'instructor',
+            default      => 'learner',
+        };
+    }
+
+    /** Reverse of {@see modelClassFor()} — model class → source token. */
+    private function sourceForModelClass(string $class): string
+    {
+        return match ($class) {
+            Admin::class      => 'admin',
+            Instructor::class => 'instructor',
+            default           => 'user',
+        };
+    }
+
+    /** Colour used when a role row has no `roles` table match. */
+    private function fallbackColor(string $source): string
+    {
+        return match ($source) {
+            'admin'      => 'blue',
+            'instructor' => 'green',
+            default      => 'teal',
+        };
     }
 
     /* ------------------------------------------------------------------ *

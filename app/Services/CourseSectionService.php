@@ -26,7 +26,15 @@ class CourseSectionService
 
     public function create(Course $course, array $data): CourseSection
     {
-        return $this->repo->createForCourse($course, $this->fillable($data));
+        $payload = $this->fillable($data);
+
+        // A new cohort inherits the course's planned session count unless
+        // the admin overrode it in the dialog (Figma 332:10708).
+        if (! array_key_exists('number_of_sessions', $payload) || $payload['number_of_sessions'] === null) {
+            $payload['number_of_sessions'] = $course->number_of_sessions;
+        }
+
+        return $this->repo->createForCourse($course, $payload);
     }
 
     public function update(CourseSection $section, array $data): CourseSection
@@ -47,7 +55,7 @@ class CourseSectionService
     private function fillable(array $data): array
     {
         $out = ['name' => $data['name']];
-        foreach (['start_date', 'end_date', 'capacity', 'status', 'avg_session_time'] as $key) {
+        foreach (['start_date', 'end_date', 'capacity', 'status', 'number_of_sessions', 'avg_session_time'] as $key) {
             if (array_key_exists($key, $data)) {
                 $out[$key] = $data[$key];
             }

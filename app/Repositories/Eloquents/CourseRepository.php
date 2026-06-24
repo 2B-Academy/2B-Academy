@@ -147,7 +147,9 @@ class CourseRepository extends BaseRepository implements CourseRepositoryInterfa
                 'category:id,name',
                 'instructors:id,name,image',
                 'qualificationSkills:id,name',
-                'sections',
+                'sections' => fn ($q) => $q->withCount([
+                    'sessions as held_sessions_count' => fn ($s) => $s->ended(),
+                ]),
                 'exams:id,course_id,title,degree,is_final',
                 // Latest 20 reviews so the Ratings tab can render without an
                 // extra round-trip. Includes machine_code so the reviewer

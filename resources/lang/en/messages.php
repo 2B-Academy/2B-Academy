@@ -49,6 +49,13 @@ return [
         'session_ended'     => 'Session ended.',
     ],
 
+    // Inbox — admin messaging (recipient groups)
+    'inbox' => [
+        'learners'   => 'Learners',
+        'recipients' => 'Recipients',
+        'all_of'     => 'All :group',
+    ],
+
     // Mobile — Academy & Enrolment (S-01 → S-04)
     'mobile' => [
         'academy_summary'             => 'Academy summary retrieved.',

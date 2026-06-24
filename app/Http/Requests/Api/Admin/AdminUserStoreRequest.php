@@ -38,6 +38,11 @@ class AdminUserStoreRequest extends FormRequest
                 'required',
                 Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', 'admin')),
             ],
+            // Password set directly from the Add User modal (replaces the
+            // legacy Controllers screen). `confirmed` pairs it with the
+            // `password_confirmation` field sent by the dialog.
+            'password'              => ['required', 'string', 'min:8', 'confirmed'],
+            'password_confirmation' => ['required', 'string'],
             'department_name' => ['nullable', 'string', 'max:255'],
             'phone'           => ['nullable', 'string', 'max:50'],
             'learner_type'    => ['nullable', Rule::in(['online', 'offline', 'hybrid'])],

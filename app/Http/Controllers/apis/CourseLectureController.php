@@ -257,8 +257,12 @@ class CourseLectureController extends ApiController
      */
     public function uploadFile(Course $course, Request $request): JsonResponse
     {
+        // Accepts both document attachments and uploaded videos (mp4 …) for the
+        // "Video" module content type. max is in KB — 512000 ≈ 500 MB to cover
+        // realistic lesson recordings (the PHP `post_max_size` / `upload_max_filesize`
+        // must be sized accordingly on the server).
         $request->validate([
-            'file' => 'required|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,jpg,jpeg,png,gif,webp',
+            'file' => 'required|file|max:512000|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,txt,jpg,jpeg,png,gif,webp,mp4,m4v,mov,webm,ogg',
         ]);
 
         $file = $request->file('file');

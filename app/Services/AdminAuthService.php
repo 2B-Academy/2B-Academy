@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Traits\TracksLastActive;
 use App\Models\Admin;
 use App\Repositories\Contracts\AdminRepositoryInterface;
 use Carbon\Carbon;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminAuthService
 {
+    use TracksLastActive;
+
     public function __construct(
         private readonly AdminRepositoryInterface $repo
     ) {}
@@ -26,6 +29,11 @@ class AdminAuthService
             ['role:admin'],
             Carbon::now()->addDays(30)
         )->plainTextToken;
+
+        // Register activity on every successful login — across all tables
+        // sharing this email (admin / instructor / user) for this person.
+        $this->stampLastActive($admin, force: true);
+        $this->stampLastActiveByEmail($admin->email ?? $email);
 
         return ['token' => $token, 'admin' => $this->repo->findWithRoles($admin->id)];
     }
