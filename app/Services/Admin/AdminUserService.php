@@ -389,6 +389,20 @@ class AdminUserService
                 }
             }
 
+            // Any non-learner role is a back-office (dashboard) role. When the
+            // primary record isn't already an admin (instructor / reports-viewer
+            // / custom), provision a hidden `admins` login so the person can sign
+            // in to the dashboard — the shadow row is excluded from the Users
+            // list so nobody appears twice.
+            if ($created['source'] !== 'admin') {
+                $this->ensureDashboardLogin(
+                    $data['email']    ?? null,
+                    $data['name_en']  ?? null,
+                    $data['password'] ?? null,
+                    $role,
+                );
+            }
+
             return $created;
         });
     }
@@ -466,6 +480,61 @@ class AdminUserService
         return ['source' => 'admin', 'id' => (int) $admin->id];
     }
 
+    /**
+     * Provision (or refresh) a hidden `admins` login for a back-office user
+     * whose primary record lives in another table (instructor / reports-
+     * viewer / custom role). This is what lets "any role with dashboard
+     * access" sign in: the dashboard login + `role:Admin` gate both operate
+     * on the `admins` table, so we mirror the credential there.
+     *
+     * The row is keyed by email and kept out of the Users list by
+     * {@see self::unifiedQuery()} so the person never appears twice. A login
+     * can only be created when a password is supplied; without one we simply
+     * keep the role in sync on any existing shadow.
+     */
+    private function ensureDashboardLogin(?string $email, ?string $name, ?string $plainPassword, string $role): void
+    {
+        $email = trim((string) $email);
+        if ($email === '' || $role === '' || $role === 'learner') {
+            return;
+        }
+
+        $admin = Admin::query()->where('email', $email)->first();
+
+        if (! $admin) {
+            // No login yet — we can only create one when we have a password.
+            if (empty($plainPassword)) {
+                return;
+            }
+            $admin = new Admin();
+            $admin->name     = $name ?: $email;
+            $admin->email    = $email;
+            $admin->password = bcrypt($plainPassword);
+            if (Schema::hasColumn('admins', 'status')) {
+                $admin->status = 'active';
+            }
+            $admin->save();
+        } else {
+            $dirty = false;
+            if ($name && $admin->name !== $name) {
+                $admin->name = $name;
+                $dirty = true;
+            }
+            if (! empty($plainPassword)) {
+                $admin->password = bcrypt($plainPassword);
+                $dirty = true;
+            }
+            if ($dirty) {
+                $admin->save();
+            }
+        }
+
+        // Mirror the chosen role so dashboard permissions resolve correctly.
+        if (method_exists($admin, 'syncRoles')) {
+            try { $admin->syncRoles([$role]); } catch (\Throwable $e) { /* no-op */ }
+        }
+    }
+
     /* ------------------------------------------------------------------ *
      |  UPDATE                                                            |
      * ------------------------------------------------------------------ */
@@ -504,6 +573,19 @@ class AdminUserService
                 if (method_exists($model, 'syncRoles')) {
                     try { $model->syncRoles([$role]); } catch (\Throwable $e) { /* no-op */ }
                 }
+            }
+
+            // Keep the hidden dashboard login in sync for non-learner roles so
+            // a password change / role switch on an instructor (or other
+            // back-office role) still lets them sign in.
+            if ($source !== 'admin' && $role !== '' && $role !== 'learner') {
+                $email = $data['email'] ?? optional($this->modelInstance($source, $id))->email;
+                $this->ensureDashboardLogin(
+                    $email,
+                    $data['name_en'] ?? null,
+                    $data['password'] ?? null,
+                    $role,
+                );
             }
         });
 
@@ -727,7 +809,19 @@ class AdminUserService
             ->selectRaw('"Admin" AS role_label')
             ->selectRaw($adminHasStatus ? 'COALESCE(status, "active") AS status' : '"active" AS status')
             ->selectRaw($adminHasLastActive ? 'last_active_at AS last_active_at' : 'NULL AS last_active_at')
-            ->selectRaw('created_at AS created_at');
+            ->selectRaw('created_at AS created_at')
+            // Hide "shadow" logins: when an admin row only exists to give a
+            // learner/instructor (or other back-office role) dashboard access,
+            // its email also lives in users/instructors. Show the person under
+            // their primary row instead so nobody appears twice.
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))->from('users')
+                  ->whereColumn('users.email', 'admins.email');
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))->from('instructors')
+                  ->whereColumn('instructors.email', 'admins.email');
+            });
 
         return $usersSub->unionAll($instructorsSub)->unionAll($adminsSub);
     }
