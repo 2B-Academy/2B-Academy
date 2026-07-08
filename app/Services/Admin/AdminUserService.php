@@ -445,7 +445,9 @@ class AdminUserService
             'name'           => ['en' => $data['name_en'], 'ar' => $data['name_ar']],
             'email'          => $data['email'],
             'image'          => $image ? $this->uploadRequestFile('instructors', null, null, $image) : null,
-            'bio'            => '',
+            // "Brief on the instructor" — bilingual, stored on the translatable
+            // bio column (the same field the Instructors catalogue uses).
+            'bio'            => ['en' => $data['brief_en'] ?? '', 'ar' => $data['brief_ar'] ?? ''],
             'status'         => 'active',
         ];
         if (! empty($data['password']) && Schema::hasColumn('instructors', 'password')) {
@@ -641,6 +643,15 @@ class AdminUserService
             }
         }
 
+        // Brief — preserve existing translations, overwrite only supplied keys
+        // (mirrors the name handling above).
+        if (array_key_exists('brief_en', $data) || array_key_exists('brief_ar', $data)) {
+            $currentBio = ['en' => $instructor->getTranslation('bio', 'en'), 'ar' => $instructor->getTranslation('bio', 'ar')];
+            $currentBio['en'] = $data['brief_en'] ?? $currentBio['en'] ?? '';
+            $currentBio['ar'] = $data['brief_ar'] ?? $currentBio['ar'] ?? '';
+            $instructor->bio = $currentBio;
+        }
+
         if ($image) {
             $instructor->image = $this->uploadRequestFile('instructors', null, null, $image);
         }
@@ -746,6 +757,7 @@ class AdminUserService
         $instHasStatus        = Schema::hasColumn('instructors', 'status');
         $instHasLastActive    = Schema::hasColumn('instructors', 'last_active_at');
         $instHasImage         = Schema::hasColumn('instructors', 'image');
+        $instHasBio           = Schema::hasColumn('instructors', 'bio');
 
         $adminHasStatus       = Schema::hasColumn('admins',      'status');
         $adminHasLastActive   = Schema::hasColumn('admins',      'last_active_at');
@@ -769,6 +781,9 @@ class AdminUserService
             ->selectRaw('phone AS phone')
             ->selectRaw('machine_code AS machine_code')
             ->selectRaw('department_name AS department_name')
+            // Brief (instructor bio) — only instructors carry one.
+            ->selectRaw('NULL AS bio_en')
+            ->selectRaw('NULL AS bio_ar')
             ->selectRaw($usersHasImage ? 'image AS image' : 'NULL AS image')
             ->selectRaw('"learner" AS role_key')
             ->selectRaw('"Learner" AS role_label')
@@ -787,6 +802,9 @@ class AdminUserService
             ->selectRaw('NULL AS phone')
             ->selectRaw('NULL AS machine_code')
             ->selectRaw('NULL AS department_name')
+            // Brief — translatable JSON {"en":"…","ar":"…"} on the bio column.
+            ->selectRaw($instHasBio ? 'NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.en")), "null") AS bio_en' : 'NULL AS bio_en')
+            ->selectRaw($instHasBio ? 'NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.ar")), "null") AS bio_ar' : 'NULL AS bio_ar')
             ->selectRaw($instHasImage ? 'image AS image' : 'NULL AS image')
             ->selectRaw('"instructor" AS role_key')
             ->selectRaw('"Instructor" AS role_label')
@@ -804,6 +822,8 @@ class AdminUserService
             ->selectRaw('NULL AS phone')
             ->selectRaw('NULL AS machine_code')
             ->selectRaw('NULL AS department_name')
+            ->selectRaw('NULL AS bio_en')
+            ->selectRaw('NULL AS bio_ar')
             ->selectRaw($adminHasImage ? 'image AS image' : 'NULL AS image')
             ->selectRaw('"admin" AS role_key')
             ->selectRaw('"Admin" AS role_label')

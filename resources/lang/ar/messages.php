@@ -91,4 +91,21 @@ return [
         'certificate_download_ready'  => 'الشهادة جاهزة للتنزيل.',
         'certificate_not_found'       => 'لم تُصدَر شهادة لهذه الدورة بعد.',
     ],
+
+    // إشعارات النظام التلقائية (المدرب / المشرف)
+    'notifications' => [
+        'pending_grade_title'                 => 'مطلوب تصحيح يدوي',
+        'pending_grade_body'                  => 'قام الطالب :student بتسليم ":title". يتطلب الأمر تصحيحًا يدويًا.',
+        'rating_dropped_instructor_title'     => 'انخفض تقييم الدورة',
+        'rating_dropped_instructor_body'      => 'انخفض تقييم دورتك ":course" إلى :rating.',
+        'rating_dropped_admin_title'          => 'انخفض تقييم الدورة',
+        'rating_dropped_admin_body'           => 'انخفض تقييم الدورة ":course" إلى :rating.',
+        'assignment_completed_title'          => 'تم إكمال الواجب',
+        'assignment_completed_single_body'    => 'أكمل :student الواجب ":title".',
+        'assignment_completed_multiple_body'  => 'أكمل :student و :count آخرين الواجب ":title".',
+        'course_assigned_title'               => 'تم تعيين دورة جديدة',
+        'course_assigned_body'                => 'تم تعيين دورة جديدة لك: ":course".',
+        'cohort_created_title'                => 'تمت إضافة دفعة جديدة',
+        'cohort_created_body'                 => 'تمت إضافة دفعة جديدة ":cohort" إلى الدورة ":course".',
+    ],
 ];

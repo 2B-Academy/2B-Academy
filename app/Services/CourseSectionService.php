@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CourseCohortCreated;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Repositories\Contracts\CourseSectionRepositoryInterface;
@@ -34,7 +35,10 @@ class CourseSectionService
             $payload['number_of_sessions'] = $course->number_of_sessions;
         }
 
-        return $this->repo->createForCourse($course, $payload);
+        $section = $this->repo->createForCourse($course, $payload);
+        event(new CourseCohortCreated($section));
+
+        return $section;
     }
 
     public function update(CourseSection $section, array $data): CourseSection

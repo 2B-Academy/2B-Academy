@@ -1,1 +1,0 @@
-import"./chunk-4CLCTAJ7.js";var t=[{path:"",redirectTo:"login",pathMatch:"full"},{path:"login",loadComponent:()=>import("./chunk-FR7GPUPS.js").then(o=>o.LoginComponent),title:"Login \u2014 2B Academy"}];export{t as AUTH_ROUTES};

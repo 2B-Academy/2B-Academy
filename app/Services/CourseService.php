@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Events\CourseCohortCreated;
+use App\Events\InstructorAssignedToCourse;
 use App\Http\Traits\HasFile;
 use App\Models\Course;
 use App\Models\CourseSection;
@@ -83,6 +85,8 @@ class CourseService
 
         if ($instructors) {
             $course->instructors()->attach($instructors);
+            // Brand new course — every attached instructor is newly assigned.
+            event(new InstructorAssignedToCourse($course, $instructors));
         }
 
         if ($qualificationSkillIds) {
@@ -118,10 +122,17 @@ class CourseService
             $data['cohort_start'], $data['cohort_end'],
         );
 
+        $previousInstructorIds = $course->instructors()->pluck('instructors.id')->all();
+
         $course = $this->courseRepository->update($course, $data);
 
         if (!is_null($instructors)) {
             $course->instructors()->sync($instructors);
+
+            $newlyAssigned = array_values(array_diff($instructors, $previousInstructorIds));
+            if ($newlyAssigned) {
+                event(new InstructorAssignedToCourse($course, $newlyAssigned));
+            }
         }
 
         if ($hasSkillsPayload) {
@@ -161,12 +172,13 @@ class CourseService
             // ("Cohort 1") so the table on the Course Detail page has
             // something to render before the admin renames it. It inherits
             // the course's planned session count as its editable default.
-            CourseSection::create(array_merge($payload, [
+            $newSection = CourseSection::create(array_merge($payload, [
                 'course_id'          => $course->id,
                 'name'               => ['en' => 'Cohort 1', 'ar' => 'الدفعة 1'],
                 'status'             => 'scheduled',
                 'number_of_sessions' => $course->number_of_sessions,
             ]));
+            event(new CourseCohortCreated($newSection));
             return;
         }
 

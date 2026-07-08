@@ -53,6 +53,15 @@ class CourseDetailResource extends JsonResource
                 'en' => (string) ($this->getTranslation('description', 'en') ?? ''),
                 'ar' => (string) ($this->getTranslation('description', 'ar') ?? ''),
             ],
+            // Bilingual bullet lists (Overview tab + Add/Edit dialog).
+            'what_students_will_learn' => [
+                'en' => array_values((array) (($this->what_students_will_learn['en'] ?? []) ?: [])),
+                'ar' => array_values((array) (($this->what_students_will_learn['ar'] ?? []) ?: [])),
+            ],
+            'requirements'       => [
+                'en' => array_values((array) (($this->requirements['en'] ?? []) ?: [])),
+                'ar' => array_values((array) (($this->requirements['ar'] ?? []) ?: [])),
+            ],
             'course_type'        => $this->course_type,
             'category'           => $this->whenLoaded('category', fn () => [
                 'id'   => $this->category->id,

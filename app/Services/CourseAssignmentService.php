@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\AssignmentSubmitted;
 use App\Http\Traits\HasFile;
 use App\Models\Course;
 use App\Models\CourseAssignment;
@@ -67,7 +68,11 @@ class CourseAssignmentService
     {
         $path = $this->uploadRequestFile('UserAssignment', request(), null, $file);
         $submission = $this->repo->upsertSubmission($assignment, $user, ['user_file' => $path]);
-        return $this->repo->findSubmissionWithRelations($submission->id);
+        $submission = $this->repo->findSubmissionWithRelations($submission->id);
+
+        event(new AssignmentSubmitted($submission));
+
+        return $submission;
     }
 
     public function reviewSubmission(UserCourseAssignment $submission, ?string $feedback, ?string $score): UserCourseAssignment

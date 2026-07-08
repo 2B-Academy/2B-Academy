@@ -46,6 +46,13 @@ class AdminUserListResource extends JsonResource
         $imageField = isset($row->image) ? (string) $row->image : '';
         $imageUrl   = $imageField !== '' ? $this->getFileUrl($imageField) : null;
 
+        // "Brief" = the instructor's translatable bio. Null for non-instructor
+        // rows. `brief` is the locale-resolved string for display; the per-
+        // locale keys back the bilingual edit form.
+        $briefEn = isset($row->bio_en) ? (string) $row->bio_en : '';
+        $briefAr = isset($row->bio_ar) ? (string) $row->bio_ar : '';
+        $brief   = $locale === 'ar' ? ($briefAr ?: $briefEn) : ($briefEn ?: $briefAr);
+
         return [
             'id'                     => (int)  ($row->id ?? 0),
             'source'                 => (string) ($row->source ?? 'user'),
@@ -53,6 +60,9 @@ class AdminUserListResource extends JsonResource
             'name'                   => $display,
             'name_en'                => $nameEn ?: null,
             'name_ar'                => $nameAr ?: null,
+            'brief_en'               => $briefEn ?: null,
+            'brief_ar'               => $briefAr ?: null,
+            'brief'                  => $brief ?: null,
             'email'                  => $row->email,
             'phone'                  => $row->phone,
             'machine_code'           => $row->machine_code,

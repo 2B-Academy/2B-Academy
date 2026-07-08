@@ -45,6 +45,10 @@ class AdminUserStoreRequest extends FormRequest
             'password_confirmation' => ['required', 'string'],
             'department_name' => ['nullable', 'string', 'max:255'],
             'phone'           => ['nullable', 'string', 'max:50'],
+            // "Brief on the instructor" — bilingual, only meaningful for the
+            // instructor role (persisted to the instructor's bio).
+            'brief_en'        => ['nullable', 'string', 'max:2000'],
+            'brief_ar'        => ['nullable', 'string', 'max:2000'],
             'learner_type'    => ['nullable', Rule::in(['online', 'offline', 'hybrid'])],
             'image'           => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg,gif', 'max:3072'],
         ];

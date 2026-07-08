@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\QuizSubmitted;
 use App\Models\Course;
 use App\Models\CourseExam;
 use App\Models\CourseExamQuestionAnswer;
@@ -74,6 +75,8 @@ class UserExamService
         if ($status === 'success') {
             $this->certificates->issueFromExam($userExam);
         }
+
+        event(new QuizSubmitted($userExam));
 
         return $userExam->load(['exam:id,title,degree,is_final', 'course:id,title,certificate']);
     }

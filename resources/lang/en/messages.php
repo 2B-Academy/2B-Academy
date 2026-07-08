@@ -91,4 +91,21 @@ return [
         'certificate_download_ready'  => 'Certificate download ready.',
         'certificate_not_found'       => 'No certificate has been issued for this course yet.',
     ],
+
+    // Event-driven system notifications (Instructor / Admin)
+    'notifications' => [
+        'pending_grade_title'                 => 'Manual grading required',
+        'pending_grade_body'                  => 'Student :student submitted ":title". Manual grading is required.',
+        'rating_dropped_instructor_title'     => 'Course rating dropped',
+        'rating_dropped_instructor_body'      => 'The rating for your course ":course" has dropped to :rating.',
+        'rating_dropped_admin_title'          => 'Course rating dropped',
+        'rating_dropped_admin_body'           => 'The course rating for ":course" has dropped to :rating.',
+        'assignment_completed_title'          => 'Assignment completed',
+        'assignment_completed_single_body'    => ':student has completed the assignment ":title".',
+        'assignment_completed_multiple_body'  => ':student and :count others have completed the assignment ":title".',
+        'course_assigned_title'               => 'New course assigned',
+        'course_assigned_body'                => 'New course has been assigned to you: ":course".',
+        'cohort_created_title'                => 'New course cohort added',
+        'cohort_created_body'                 => 'A new cohort ":cohort" has been added to ":course".',
+    ],
 ];

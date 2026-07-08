@@ -51,7 +51,6 @@ class DashboardService
             'top_courses'      => $topCourses,
             'enrollment_trend' => $enrollmentTrend,
             'trend_range'      => $resolvedRange,
-            'notifications'    => $this->repo->getRecentNotifications(8),
         ];
     }
 

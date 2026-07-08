@@ -76,7 +76,9 @@ use App\Repositories\Eloquents\UserEnrollmentRepository;
 use App\Repositories\Eloquents\UserProgressRepository;
 use App\Repositories\Eloquents\UserRepository;
 use App\Models\Category;
+use App\Models\CourseRating;
 use App\Models\User;
+use App\Observers\CourseRatingObserver;
 use App\Observers\UserObserver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -168,10 +170,23 @@ class AppServiceProvider extends ServiceProvider
             SendEmailVerificationNotification::class,
         );
 
+        // Event-driven notification system — Instructor & Admin alerts for
+        // pending grading, rating drops, assignment completion, course
+        // assignment, and new cohorts. Deliberately NOT registered here:
+        // this app's Laravel 11 bootstrap auto-discovers any `handle*`
+        // method under App\Listeners that type-hints an App\Events class
+        // (verified empirically — explicit Event::listen() calls here
+        // caused every notification to be created twice). See
+        // App\Events / App\Listeners / App\Notifications.
+
         // Keep the Job Titles catalogue in lock-step with the HR roster
         // (users.department_name is the source of truth — see
         // App\Services\JobTitleSyncService for the full rationale).
         User::observe(UserObserver::class);
+
+        // Fire the abnormal-rating check from the model layer so it runs for
+        // every rating path (learner API, mobile app, public website).
+        CourseRating::observe(CourseRatingObserver::class);
 
         $this->shareGlobalFrontData();
     }

@@ -27,7 +27,11 @@ class CourseLectureResource extends JsonResource
             'duration_minutes'   => $this->duration_minutes,
 
             'type'               => $this->type,
+            // `video` holds a URL (link) or a stored file path (video/document);
+            // it is null for article modules. Rich-text article bodies live in
+            // the dedicated `content` field below.
             'video'              => $this->video,
+            'content'            => $this->content,
             'file_name'          => $this->file_name,
             // Public URL when the lecture stores a real file; null otherwise.
             'file_url'           => $this->type === 'file' && $this->video

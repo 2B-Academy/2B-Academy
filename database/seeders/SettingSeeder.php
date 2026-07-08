@@ -111,6 +111,21 @@ class SettingSeeder extends Seeder
             ['id' => 45, 'type' => 'url', 'label' => 'رابط لينكدان', 'key' => 'linkedin', 'value' => 'https://www.linkedin.com/', 'module' => 'social', 'created_at' => '2025-08-11 21:34:53', 'updated_at' => '2025-08-12 10:33:23'],
             ['id' => 46, 'type' => 'url', 'label' => 'رابط سناب شات', 'key' => 'snapchat', 'value' => 'https://www.linkedin.com/', 'module' => 'social', 'created_at' => '2025-08-11 21:34:53', 'updated_at' => '2025-08-12 10:33:23'],
             ['id' => 249, 'type' => 'number', 'label' => 'عدد الساعات في السنة', 'key' => 'yearly_hours', 'value' => '60', 'module' => 'settings', 'created_at' => '2026-02-19 12:28:58', 'updated_at' => '2026-02-19 12:29:17'],
+            [
+                // Row already exists in production (auto-created by
+                // SettingRepository::updateByKey the first time an admin
+                // saved the Settings page) under module=platform — target
+                // that same key+module so this seeder stays idempotent
+                // instead of forking a duplicate row. The value corrects a
+                // placeholder default (the Angular form falls back several
+                // unrelated numeric fields to 30) to a sane 1-5 rating
+                // scale default.
+                'type' => 'number',
+                'label' => 'Abnormal Rating Threshold',
+                'key' => 'abnormal_rating_threshold',
+                'value' => '2',
+                'module' => 'platform',
+            ],
         ];
     }
 }

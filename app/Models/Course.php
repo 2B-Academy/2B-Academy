@@ -22,6 +22,10 @@ class Course extends Model
         // 321:7349). Read-only on the course afterwards — cohorts inherit
         // it as their editable default.
         'number_of_sessions' => 'integer',
+        // Bilingual bullet lists surfaced on the Overview tab. Shape:
+        // { "en": string[], "ar": string[] }.
+        'what_students_will_learn' => 'array',
+        'requirements'             => 'array',
     ];
 
     public function scopeActive($q)

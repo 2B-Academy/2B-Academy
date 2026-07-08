@@ -16,6 +16,23 @@ class CourseLectureRequest extends FormRequest
         // fall back to the raw id when it's not yet resolved.
         $routeCourse = $this->route('course');
         $courseId = $routeCourse instanceof Course ? $routeCourse->id : $routeCourse;
+        $contentType = $this->input('content_type');
+        $isArticle   = $contentType === 'article';
+
+        // Article bodies live in the dedicated `content` column (rich-text
+        // HTML); every other content type puts a URL or a stored file path in
+        // `video`. Only one of the two is required, depending on the type.
+        $videoRules = $isArticle ? ['nullable', 'string', 'max:2048'] : ['required', 'string'];
+        if (! $isArticle && $contentType === 'link') {
+            $videoRules[] = 'url';
+            $videoRules[] = 'max:2048';
+        } elseif (! $isArticle) {
+            $videoRules[] = 'max:2048';
+        }
+
+        $contentRules = $isArticle
+            ? ['required', 'string', 'max:65535']
+            : ['nullable', 'string', 'max:65535'];
 
         return [
             // `section_id` is optional: the service will fall back to a
@@ -44,10 +61,13 @@ class CourseLectureRequest extends FormRequest
             ],
             'duration_minutes'   => 'nullable|integer|min:0|max:10000',
 
-            // `type` reflects how the `video` value is stored (url | file).
-            // Defaults derived from `content_type` in the service if absent.
-            'type'               => 'nullable|in:url,file',
-            'video'              => 'required|string|max:2048',
+            // `type` reflects how the primary payload is stored:
+            // url | file (in `video`) or article (rich-text in `content`).
+            // Derived from `content_type` in the service if absent.
+            'type'               => 'nullable|in:url,file,article',
+            'video'              => $videoRules,
+            // Rich-text HTML body for article modules (dedicated column).
+            'content'            => $contentRules,
 
             // Optional original filename for uploaded documents — preserved so
             // the Edit dialog can render "File Title.pdf · 313 KB" instead of a

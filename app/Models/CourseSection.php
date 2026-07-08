@@ -31,6 +31,11 @@ class CourseSection extends Model
         'avg_session_time' => 'decimal:2',
     ];
 
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
     public function lectures()
     {
         return $this->hasMany(CourseLecture::class, 'section_id');

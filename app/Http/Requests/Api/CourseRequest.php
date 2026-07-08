@@ -62,6 +62,17 @@ class CourseRequest extends FormRequest
             $merge['description'] = ['en' => $this->input('description'), 'ar' => $this->input('description')];
         }
 
+        // The bilingual bullet lists come over multipart as JSON strings
+        // (so an empty list survives the round-trip and clearing all points
+        // actually persists). Decode them back into arrays before validation.
+        foreach (['what_students_will_learn', 'requirements'] as $field) {
+            $value = $this->input($field);
+            if (is_string($value)) {
+                $decoded = json_decode($value, true);
+                $merge[$field] = is_array($decoded) ? $decoded : [];
+            }
+        }
+
         if ($merge !== []) {
             $this->merge($merge);
         }
@@ -82,7 +93,22 @@ class CourseRequest extends FormRequest
             'description'             => 'required|array',
             'description.en'          => 'required|string',
             'description.ar'          => 'nullable|string',
-            'category_id'             => 'required|exists:categories,id',
+            // Category is optional (Figma: the field carries no required
+            // marker). A blank/absent value is fine; when present it must
+            // reference a real category.
+            'category_id'             => 'nullable|exists:categories,id',
+            // Bilingual bullet lists (Overview tab). Each locale is an
+            // optional array of short strings.
+            'what_students_will_learn'      => 'nullable|array',
+            'what_students_will_learn.en'   => 'nullable|array',
+            'what_students_will_learn.en.*' => 'string|max:500',
+            'what_students_will_learn.ar'   => 'nullable|array',
+            'what_students_will_learn.ar.*' => 'string|max:500',
+            'requirements'                  => 'nullable|array',
+            'requirements.en'               => 'nullable|array',
+            'requirements.en.*'             => 'string|max:500',
+            'requirements.ar'               => 'nullable|array',
+            'requirements.ar.*'             => 'string|max:500',
             'intro_video'             => 'nullable|string',
             'price'                   => 'nullable|numeric|min:0',
             'currency'                => 'nullable|string|max:10',

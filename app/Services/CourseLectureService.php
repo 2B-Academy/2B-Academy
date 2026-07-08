@@ -64,8 +64,21 @@ class CourseLectureService
         }
 
         $contentType = $data['content_type'] ?? 'video';
-        if (empty($data['type'])) {
-            $data['type'] = $contentType === 'document' ? 'file' : 'url';
+
+        if ($contentType === 'article') {
+            // Article body belongs in `content`. Tolerate a legacy client that
+            // still sends the HTML under `video` by folding it across.
+            if (empty($data['content']) && ! empty($data['video'])) {
+                $data['content'] = $data['video'];
+            }
+            $data['video'] = null;
+            $data['type']  = 'article';
+        } else {
+            // url/file content types never carry a rich-text body.
+            $data['content'] = null;
+            if (empty($data['type'])) {
+                $data['type'] = $contentType === 'document' ? 'file' : 'url';
+            }
         }
 
         if (($data['learner_scope'] ?? 'all') !== 'cohort') {

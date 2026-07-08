@@ -20,6 +20,9 @@ class CourseRatingService
 
     public function submitRating(Course $course, int $userId, array $data): CourseRating
     {
+        // The CourseRatingSubmitted event is fired by CourseRatingObserver on
+        // the model write, so every rating path (this service, the mobile
+        // service, the public site) triggers the abnormal-rating check.
         return $this->ratingRepository->upsertForUser($course->id, $userId, $data);
     }
 

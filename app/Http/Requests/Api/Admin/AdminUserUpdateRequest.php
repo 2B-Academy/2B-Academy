@@ -47,6 +47,9 @@ class AdminUserUpdateRequest extends FormRequest
             'password_confirmation' => ['sometimes', 'nullable', 'string'],
             'department_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'phone'           => ['sometimes', 'nullable', 'string', 'max:50'],
+            // "Brief on the instructor" — bilingual, persisted to bio.
+            'brief_en'        => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'brief_ar'        => ['sometimes', 'nullable', 'string', 'max:2000'],
             'learner_type'    => ['sometimes', 'nullable', Rule::in(['online', 'offline', 'hybrid'])],
             'status'          => ['sometimes', 'nullable', Rule::in(['active', 'inactive', 'deactivated'])],
             'image'           => ['sometimes', 'nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg,gif', 'max:3072'],
