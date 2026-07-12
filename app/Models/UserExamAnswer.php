@@ -26,7 +26,17 @@ class UserExamAnswer extends Model
         return $this->belongsTo(UserExam::class, 'user_exam_id');
     }
 
-    public function question()
+    /**
+     * NOTE: intentionally NOT named `question()`. `user_exam_answers` also
+     * has a legacy `question` STRING column (the MCQ-only flow's plain-text
+     * prompt snapshot) — Eloquent's attribute resolution always prefers a
+     * real column over a same-named relationship method
+     * (see HasAttributes::getAttribute — `hasAttribute($key)` is checked
+     * before relations, with no fallback even when the relation is eager
+     * loaded), so `$answer->question` can NEVER resolve to this relation.
+     * That silent collision is what `examQuestion()` avoids.
+     */
+    public function examQuestion()
     {
         return $this->belongsTo(CourseExamQuestion::class, 'question_id');
     }

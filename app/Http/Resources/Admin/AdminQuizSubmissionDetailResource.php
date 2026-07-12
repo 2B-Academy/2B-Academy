@@ -22,7 +22,8 @@ class AdminQuizSubmissionDetailResource extends JsonResource
         $percent = ($max > 0 && $awarded !== null) ? (int) round(($awarded / $max) * 100) : null;
 
         $answers = $this->whenLoaded('answers', fn () => $this->answers->map(function ($answer) {
-            $q = $answer->question;
+            // `examQuestion`, not `question` — see UserExamAnswer::examQuestion().
+            $q = $answer->examQuestion;
             return [
                 'id'             => $answer->id,
                 'awarded_score'  => $answer->awarded_score !== null ? (int) $answer->awarded_score : null,

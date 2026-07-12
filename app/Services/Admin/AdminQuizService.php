@@ -222,7 +222,7 @@ class AdminQuizService
                 'user:id,name',
                 'exam.course:id,title',
                 'exam.creator:id,name',
-                'answers.question',
+                'answers.examQuestion',
             ])
             ->findOrFail($id);
     }
@@ -234,7 +234,9 @@ class AdminQuizService
         ?User $reviewer
     ): UserExamAnswer {
         return DB::transaction(function () use ($answer, $awardedScore, $feedback, $reviewer) {
-            $maxScore = (int) ($answer->question->score ?? 0);
+            // `examQuestion` — NOT `question` — see UserExamAnswer::examQuestion()
+            // docblock: `question` is shadowed by a legacy same-named column.
+            $maxScore = (int) ($answer->examQuestion->score ?? 0);
             $awarded  = max(0, min($awardedScore, $maxScore));
 
             $answer->update([
@@ -245,7 +247,7 @@ class AdminQuizService
 
             $this->recalculateSubmissionTotals($answer->user_exam_id, $reviewer?->id);
 
-            return $answer->fresh(['question']);
+            return $answer->fresh(['examQuestion']);
         });
     }
 
