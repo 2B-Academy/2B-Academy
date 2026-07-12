@@ -46,6 +46,13 @@ return [
         'blocked_both'       => 'You did not meet the required attendance and score thresholds for this course.',
     ],
 
+    // Course player sidebar — fallback group labels when a lecture/assessment
+    // has no section-based "Week N" grouping to fall back on.
+    'course_player' => [
+        'general_content'   => 'Course Content',
+        'assessments_group'  => 'Assessments',
+    ],
+
     // Learner rich quiz / assignment submission (question-based)
     'quiz_not_found_for_course'        => 'This quiz is not available for this course.',
     'quiz_already_submitted'           => 'You have already submitted this quiz.',

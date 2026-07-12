@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\apis\CertificateStatusController;
+use App\Http\Controllers\apis\LearnerCoursePlayerController;
 use App\Http\Controllers\apis\LectureProgressController;
 use App\Http\Controllers\apis\UserCourseEvaluationController;
 use App\Http\Controllers\apis\UserDashboardController;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 |   GET  /my/assignments         — assignments + submission status
 |   GET  /my/certificates        — earned certificates
 |   GET  /my/progress/{course}   — course completion % + per-lecture detail
+|   GET  /my/courses/{course}/outline — course-player sidebar (week-grouped lectures/quizzes/assignments) + certificate status
 |
 | Exam Submission
 |   POST /courses/{course}/exams/{exam}/submit  — submit exam answers (auto-graded)
@@ -56,6 +58,7 @@ Route::middleware(['auth.user', 'role:User'])->group(function () {
         Route::get('ratings',             [UserDashboardController::class, 'myRatings']);
         Route::get('lecture-questions',   [UserDashboardController::class, 'myLectureQuestions']);
         Route::get('learnings',           [UserDashboardController::class, 'learnings']);
+        Route::get('courses/{course}/outline', [LearnerCoursePlayerController::class, 'outline']);
     });
 
     // ── Exam Submission ────────────────────────────────────────────────────
