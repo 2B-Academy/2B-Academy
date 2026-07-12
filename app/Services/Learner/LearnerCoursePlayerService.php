@@ -7,10 +7,12 @@ use App\Models\CourseAssignment;
 use App\Models\CourseAssignmentQuestion;
 use App\Models\CourseExam;
 use App\Models\CourseExamQuestion;
+use App\Models\CourseLecture;
 use App\Models\CourseSection;
 use App\Models\User;
 use App\Models\UserCourseAssignment;
 use App\Models\UserExam;
+use App\Models\UserLectureProgress;
 use App\Services\CertificateProjectionService;
 use App\Services\LectureProgressService;
 
@@ -117,6 +119,42 @@ class LearnerCoursePlayerService
             'modules_completed' => $modulesCompleted,
             'modules_total' => $modulesTotal,
             'weeks' => $weeks,
+        ];
+    }
+
+    /**
+     * Full content for a single lecture — the outline's per-item payload is
+     * metadata-only (title/content_type/completed) for sidebar rendering, so
+     * the content viewer fetches the actual body/URL for the selected item
+     * here rather than bloating every outline response with every lecture's
+     * full content up front.
+     */
+    public function lecture(User $user, Course $course, CourseLecture $lecture): array
+    {
+        $locale = app()->getLocale();
+
+        $contentUrl = match ($lecture->content_type) {
+            'video', 'document' => $lecture->type === 'file' && $lecture->video
+                ? $lecture->getFileUrl($lecture->video)
+                : $lecture->video,
+            'link' => $lecture->video,
+            default => null,
+        };
+
+        $progress = UserLectureProgress::where('user_id', $user->id)
+            ->where('lecture_id', $lecture->id)
+            ->first();
+
+        return [
+            'id' => $lecture->id,
+            'title' => $lecture->getTranslation('title', $locale),
+            'description' => $lecture->getTranslation('instructions', $locale),
+            'content_type' => $lecture->content_type,
+            'content_url' => $contentUrl ?: null,
+            'body' => $lecture->content_type === 'article' ? $lecture->content : null,
+            'duration_minutes' => $lecture->duration_minutes,
+            'require_completion' => (bool) $lecture->require_completion,
+            'completed' => (bool) ($progress?->completed ?? false),
         ];
     }
 

@@ -67,6 +67,7 @@ Route::middleware(['auth.user', 'role:User'])->group(function () {
     // ── Lecture Progress ───────────────────────────────────────────────────
     Route::post('courses/{course}/lectures/{lecture}/progress', [LectureProgressController::class, 'store']);
     Route::get('courses/{course}/my-progress',                  [LectureProgressController::class, 'show']);
+    Route::get('courses/{course}/lectures/{lecture}',            [LearnerCoursePlayerController::class, 'lecture']);
 
     // ── Certificate status projection (On track / At risk / Blocked) ───────
     Route::get('courses/{course}/certificate-status', [CertificateStatusController::class, 'show']);

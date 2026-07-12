@@ -89,4 +89,44 @@ class LearnerCoursePlayerOutlineTest extends ApiTestCase
             ->count();
         $this->assertSame(1, $activeCount);
     }
+
+    public function test_single_lecture_endpoint_returns_full_article_body(): void
+    {
+        ['headers' => $headers] = $this->userToken();
+
+        $course = Course::factory()->create();
+        $lecture = CourseLecture::factory()->create([
+            'course_id' => $course->id,
+            'content_type' => 'article',
+            'content' => 'Full article body text.',
+            'require_completion' => true,
+        ]);
+
+        $response = $this->withHeaders($headers)
+            ->getJson(self::BASE . "/courses/{$course->id}/lectures/{$lecture->id}");
+
+        $this->assertSuccess($response);
+        $result = $response->json('result');
+
+        $this->assertSame($lecture->id, $result['id']);
+        $this->assertSame('article', $result['content_type']);
+        $this->assertSame('Full article body text.', $result['body']);
+        $this->assertNull($result['content_url']);
+        $this->assertTrue($result['require_completion']);
+        $this->assertFalse($result['completed']);
+    }
+
+    public function test_single_lecture_endpoint_404s_when_lecture_belongs_to_a_different_course(): void
+    {
+        ['headers' => $headers] = $this->userToken();
+
+        $course = Course::factory()->create();
+        $otherCourse = Course::factory()->create();
+        $lecture = CourseLecture::factory()->create(['course_id' => $otherCourse->id]);
+
+        $response = $this->withHeaders($headers)
+            ->getJson(self::BASE . "/courses/{$course->id}/lectures/{$lecture->id}");
+
+        $response->assertStatus(404);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\apis;
 
 use App\Models\Course;
+use App\Models\CourseLecture;
 use App\Services\Learner\LearnerCoursePlayerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,17 @@ class LearnerCoursePlayerController extends ApiController
         return $this->success(
             __('messages.retrieved'),
             $this->service->outline($request->user(), $course),
+        );
+    }
+
+    /** GET courses/{course}/lectures/{lecture} */
+    public function lecture(Request $request, Course $course, CourseLecture $lecture): JsonResponse
+    {
+        abort_if($lecture->course_id !== $course->id, 404);
+
+        return $this->success(
+            __('messages.retrieved'),
+            $this->service->lecture($request->user(), $course, $lecture),
         );
     }
 }
