@@ -39,6 +39,23 @@ return [
     'certificate_revoked'     => 'Certificate revoked successfully.',
     'certificate_not_found'   => 'Certificate not found.',
 
+    // Certificate status projection (learner-facing "on track / at risk" badge)
+    'certificate_status' => [
+        'blocked_attendance' => 'You did not meet the required attendance threshold for this course.',
+        'blocked_score'      => 'Your score did not meet the minimum required for this course.',
+        'blocked_both'       => 'You did not meet the required attendance and score thresholds for this course.',
+    ],
+
+    // Learner rich quiz / assignment submission (question-based)
+    'quiz_not_found_for_course'        => 'This quiz is not available for this course.',
+    'quiz_already_submitted'           => 'You have already submitted this quiz.',
+    'quiz_not_submitted'               => 'You have not submitted this quiz yet.',
+    'quiz_question_not_in_quiz'        => 'This question does not belong to the quiz.',
+    'assignment_not_question_based'    => 'This assignment does not have questions to answer — submit a file instead.',
+    'assignment_already_submitted'     => 'You have already submitted this assignment.',
+    'assignment_not_submitted'         => 'You have not submitted this assignment yet.',
+    'assignment_question_not_in_assignment' => 'This question does not belong to the assignment.',
+
     // Dashboard — Session Passcode widget
     'passcode' => [
         'generated'         => 'Passcode generated.',
