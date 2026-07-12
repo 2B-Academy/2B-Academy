@@ -29,4 +29,8 @@ Route::middleware(['auth.user', 'role:User'])
             ->whereNumber('course');
         Route::post('courses/{course}/enrol', [AcademyController::class, 'enrol'])
             ->whereNumber('course');
+        // GAP 4 — "Notify me for next cohort" intent storage (learner-web
+        // only for now; see NAS-LMS-Website-Business-Flows.md GAP 4).
+        Route::post('courses/{course}/notify-me', [AcademyController::class, 'notifyMe'])
+            ->whereNumber('course');
     });

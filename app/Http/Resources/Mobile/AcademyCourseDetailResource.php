@@ -43,10 +43,26 @@ class AcademyCourseDetailResource extends JsonResource
             'title'           => $course->getTranslation('title', $locale),
             'description'     => $course->getTranslation('description', $locale),
             'course_type'     => $course->course_type,
+            'level'           => $course->level,
+            // Course-level "X weeks" calendar-span stat — same
+            // single-source-of-truth formula as the S-02 card/filter,
+            // see AcademyRepository::durationWeeksSql() / CourseDurationBucket.
+            'duration_weeks'  => $course->duration_weeks !== null ? (int) $course->duration_weeks : null,
             'image'           => $this->absoluteUrl($course->image),
             'hours'           => (int) ($course->hours ?? 0),
             'has_certificate' => (bool) $course->certificate,
             'allow_attendance'=> (bool) ($course->allow_attendances ?? false),
+
+            // Bilingual bullet lists (Overview tab). Mirrors the admin
+            // CourseDetailResource cast/shape exactly.
+            'what_students_will_learn' => [
+                'en' => array_values((array) (($course->what_students_will_learn['en'] ?? []) ?: [])),
+                'ar' => array_values((array) (($course->what_students_will_learn['ar'] ?? []) ?: [])),
+            ],
+            'requirements' => [
+                'en' => array_values((array) (($course->requirements['en'] ?? []) ?: [])),
+                'ar' => array_values((array) (($course->requirements['ar'] ?? []) ?: [])),
+            ],
 
             'category'        => $course->category ? [
                 'id'   => (int) $course->category->id,
@@ -56,6 +72,7 @@ class AcademyCourseDetailResource extends JsonResource
             'instructors'     => $course->instructors->map(fn ($i) => [
                 'id'    => (int) $i->id,
                 'name'  => (string) $i->name,
+                'bio'   => (string) ($i->bio ?? ''),
                 'image' => $this->absoluteUrl($i->image),
             ])->values(),
 

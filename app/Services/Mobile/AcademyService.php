@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Mobile;
 
+use App\Enums\EnumRegistry;
 use App\Enums\Mobile\CourseCtaState;
+use App\Enums\Mobile\CourseDurationBucket;
 use App\Models\Course;
+use App\Models\CourseNotifyInterest;
 use App\Models\CourseSection;
 use App\Models\User;
 use App\Repositories\Contracts\Mobile\AcademyRepositoryInterface;
@@ -84,6 +87,11 @@ final class AcademyService
 
     /**
      * S-02 paginated list.
+     *
+     * @param  array<int, string>|null  $levels           Whitelisted against `EnumRegistry::values('course_level')`.
+     * @param  array<int, string>|null  $courseTypes      Whitelisted against `EnumRegistry::values('course_type')`.
+     * @param  array<int, string>|null  $durationBuckets  Whitelisted against `CourseDurationBucket::values()`.
+     * @param  array<int, int>|null     $jobRoleIds       `job_titles.id` values.
      */
     public function listAvailable(
         User    $user,
@@ -91,15 +99,15 @@ final class AcademyService
         ?string $search,
         ?int    $perPage,
         ?string $scope = null,
+        ?array  $levels = null,
+        ?array  $courseTypes = null,
+        ?array  $durationBuckets = null,
+        ?array  $jobRoleIds = null,
+        ?string $sort = null,
     ): LengthAwarePaginator {
         $effectivePerPage = $perPage !== null && $perPage > 0
             ? min($perPage, $this->settings->academyPerPage() * 5)
             : $this->settings->academyPerPage();
-
-        $minChars = $this->settings->academySearchMinChars();
-        $cleanSearch = $search !== null && mb_strlen(trim($search)) >= $minChars
-            ? trim($search)
-            : null;
 
         return $this->repository->paginateAvailable(
             user: $user,
@@ -108,9 +116,73 @@ final class AcademyService
             scheduledVisibilityDays: $this->settings->academyScheduledVisibilityDays(),
             perPage: $effectivePerPage,
             categoryId: $categoryId,
-            search: $cleanSearch,
+            search: $this->cleanSearch($search),
             scope: $this->normaliseScope($scope),
+            levels: $this->normaliseLevels($levels),
+            courseTypes: $this->normaliseCourseTypes($courseTypes),
+            durationBuckets: $this->normaliseDurationBuckets($durationBuckets),
+            jobRoleIds: $this->normaliseJobRoleIds($jobRoleIds),
+            sort: $this->normaliseSort($sort),
         );
+    }
+
+    /**
+     * Per-option Type / Level / Duration facet counts for the S-02
+     * Catalogue filter sidebar, computed against whichever OTHER filters
+     * are currently applied (see `AcademyRepositoryInterface::filterFacetCounts()`).
+     *
+     * @param  array<int, string>|null  $levels
+     * @param  array<int, string>|null  $courseTypes
+     * @param  array<int, string>|null  $durationBuckets
+     * @param  array<int, int>|null     $jobRoleIds
+     * @return array{type: array<string, int>, level: array<string, int>, duration: array<string, int>}
+     */
+    public function filterFacetCounts(
+        User    $user,
+        ?int    $categoryId,
+        ?string $search,
+        ?string $scope = null,
+        ?array  $levels = null,
+        ?array  $courseTypes = null,
+        ?array  $durationBuckets = null,
+        ?array  $jobRoleIds = null,
+    ): array {
+        return $this->repository->filterFacetCounts(
+            user: $user,
+            now: now(),
+            defaultCloseOffsetDays: $this->settings->academyDefaultCloseOffsetDays(),
+            scheduledVisibilityDays: $this->settings->academyScheduledVisibilityDays(),
+            categoryId: $categoryId,
+            search: $this->cleanSearch($search),
+            scope: $this->normaliseScope($scope),
+            levels: $this->normaliseLevels($levels),
+            courseTypes: $this->normaliseCourseTypes($courseTypes),
+            durationBuckets: $this->normaliseDurationBuckets($durationBuckets),
+            jobRoleIds: $this->normaliseJobRoleIds($jobRoleIds),
+        );
+    }
+
+    /**
+     * GAP 4 — record (idempotently) that this learner wants to be
+     * notified when `$course`'s next cohort opens for enrolment. Storage
+     * only: the admin-side trigger that actually sends the notification
+     * when a new cohort opens is a separate follow-up, not built here.
+     */
+    public function notifyMeForNextCohort(User $user, Course $course): void
+    {
+        CourseNotifyInterest::query()->updateOrCreate([
+            'user_id'   => $user->id,
+            'course_id' => $course->id,
+        ]);
+    }
+
+    private function cleanSearch(?string $search): ?string
+    {
+        $minChars = $this->settings->academySearchMinChars();
+
+        return $search !== null && mb_strlen(trim($search)) >= $minChars
+            ? trim($search)
+            : null;
     }
 
     /**
@@ -120,6 +192,80 @@ final class AcademyService
     private function normaliseScope(?string $scope): string
     {
         return in_array($scope, ['special', 'general'], true) ? $scope : 'all';
+    }
+
+    /**
+     * @param  array<int, string>|null  $levels
+     * @return array<int, string>|null
+     */
+    private function normaliseLevels(?array $levels): ?array
+    {
+        if (empty($levels)) {
+            return null;
+        }
+
+        $valid = array_values(array_intersect($levels, EnumRegistry::values('course_level')));
+
+        return $valid !== [] ? $valid : null;
+    }
+
+    /**
+     * @param  array<int, string>|null  $courseTypes
+     * @return array<int, string>|null
+     */
+    private function normaliseCourseTypes(?array $courseTypes): ?array
+    {
+        if (empty($courseTypes)) {
+            return null;
+        }
+
+        $valid = array_values(array_intersect($courseTypes, EnumRegistry::values('course_type')));
+
+        return $valid !== [] ? $valid : null;
+    }
+
+    /**
+     * @param  array<int, string>|null  $durationBuckets
+     * @return array<int, string>|null
+     */
+    private function normaliseDurationBuckets(?array $durationBuckets): ?array
+    {
+        if (empty($durationBuckets)) {
+            return null;
+        }
+
+        $valid = array_values(array_intersect($durationBuckets, CourseDurationBucket::values()));
+
+        return $valid !== [] ? $valid : null;
+    }
+
+    /**
+     * @param  array<int, mixed>|null  $jobRoleIds
+     * @return array<int, int>|null
+     */
+    private function normaliseJobRoleIds(?array $jobRoleIds): ?array
+    {
+        if (empty($jobRoleIds)) {
+            return null;
+        }
+
+        $valid = array_values(array_unique(array_map(
+            static fn ($id) => (int) $id,
+            array_filter($jobRoleIds, static fn ($id) => (int) $id > 0),
+        )));
+
+        return $valid !== [] ? $valid : null;
+    }
+
+    /**
+     * Whitelist the sort key. Unknown/missing values collapse to
+     * `most_relevant` — the original, unchanged default ordering.
+     */
+    private function normaliseSort(?string $sort): string
+    {
+        return in_array($sort, ['most_relevant', 'highest_rated', 'soonest_start', 'newest'], true)
+            ? $sort
+            : 'most_relevant';
     }
 
     /**
@@ -166,6 +312,24 @@ final class AcademyService
             return CourseCtaState::EnrolledViewLearning;
         }
 
+        return $this->resolveCtaStateForAvailableCourse($anchorCohort);
+    }
+
+    /**
+     * The deadline/capacity-only half of `resolveCtaState()`, extracted
+     * so the S-02 card list can reuse the exact same business rule
+     * WITHOUT an `isEnrolledInCourse()` round trip per card (which would
+     * be an N+1 query across a page of results).
+     *
+     * Safe to skip the enrolled check here because every course in the
+     * S-02 "available" set is already guaranteed NOT enrolled — see
+     * `AcademyRepository::baseAvailableQuery()`, which excludes any
+     * course the learner holds ANY existing enrolment in. So this can
+     * only ever resolve to `EnrolNow` / `GetNotified` / `Unavailable`,
+     * never `EnrolledViewLearning` — exactly the 3 states the card needs.
+     */
+    public function resolveCtaStateForAvailableCourse(?CourseSection $anchorCohort): CourseCtaState
+    {
         if ($anchorCohort === null) {
             return CourseCtaState::Unavailable;
         }

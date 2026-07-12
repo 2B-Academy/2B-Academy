@@ -65,6 +65,7 @@ return [
         'scope_general'               => 'دورات عامة',
         'academy_courses'             => 'تم استرجاع دورات الأكاديمية.',
         'academy_course_detail'       => 'تم استرجاع تفاصيل الدورة.',
+        'academy_notify_me'           => 'سنقوم بإشعارك عند فتح باب التسجيل للدفعة القادمة.',
         'academy_course_unavailable'  => 'هذه الدورة لم تعد متاحة. ربما اكتملت الدفعة أو أُغلق التسجيل.',
         'enrolment_success'           => 'تم تأكيد مقعدك بنجاح.',
         'enrolment_cohort_full'       => 'فشل التسجيل — اكتملت هذه الدفعة الآن.',

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquents\Mobile;
 
+use App\Enums\EnumRegistry;
+use App\Enums\Mobile\CourseDurationBucket;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\User;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -83,13 +86,23 @@ final class AcademyRepository implements AcademyRepositoryInterface
         ?int    $categoryId,
         ?string $search,
         ?string $scope = null,
+        ?array  $levels = null,
+        ?array  $courseTypes = null,
+        ?array  $durationBuckets = null,
+        ?array  $jobRoleIds = null,
+        string  $sort = 'most_relevant',
     ): LengthAwarePaginator {
-        $locale = app()->getLocale();
+        $today = $now->toDateString();
 
         $query = $this->baseAvailableQuery($user, $now, $defaultCloseOffsetDays, $scheduledVisibilityDays);
         $this->applyScope($query, $scope, $this->employeeQualificationSkillIds($user));
+        $this->applyLevelFilter($query, $levels);
+        $this->applyCourseTypeFilter($query, $courseTypes);
+        $this->applyJobRoleFilter($query, $jobRoleIds);
+        $this->applyDurationFilter($query, $durationBuckets, $today);
+        $this->applyCategoryAndSearch($query, $categoryId, $search);
 
-        return $query
+        $query
             ->select([
                 'courses.id',
                 'courses.title',
@@ -98,9 +111,14 @@ final class AcademyRepository implements AcademyRepositoryInterface
                 'courses.category_id',
                 'courses.image',
                 'courses.hours',
+                'courses.level',
                 'courses.certificate',
                 'courses.created_at',
             ])
+            // Course-level "X weeks" stat (Catalogue card + Course Detail).
+            // See CourseDurationBucket for why this is derived from the
+            // next dated cohort rather than a stored column.
+            ->selectRaw($this->durationWeeksSql() . ' as duration_weeks', [$today])
             ->with([
                 'category:id,name',
                 'qualificationSkills:id,name',
@@ -113,23 +131,102 @@ final class AcademyRepository implements AcademyRepositoryInterface
                     ->select(['id', 'course_id', 'name', 'start_date', 'end_date', 'capacity', 'enrolment_closes_at', 'status']),
             ])
             ->withCount(['ratings as rating_count'])
-            ->withAvg('ratings as rating_avg', 'rating')
-            ->when($categoryId, fn ($q) => $q->where('courses.category_id', $categoryId))
-            ->when($search, fn ($q) => $q->where(function (Builder $inner) use ($search, $locale) {
-                $inner->where("courses.title->{$locale}", 'LIKE', "%{$search}%")
-                      ->orWhere('courses.title->en', 'LIKE', "%{$search}%")
-                      ->orWhere('courses.title->ar', 'LIKE', "%{$search}%");
-            }))
-            ->orderByDesc('courses.id')
-            ->paginate($perPage);
+            ->withAvg('ratings as rating_avg', 'rating');
+
+        $this->applySort($query, $sort, $today);
+
+        return $query->paginate($perPage);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function filterFacetCounts(
+        User    $user,
+        Carbon  $now,
+        int     $defaultCloseOffsetDays,
+        int     $scheduledVisibilityDays,
+        ?int    $categoryId,
+        ?string $search,
+        ?string $scope,
+        ?array  $levels,
+        ?array  $courseTypes,
+        ?array  $durationBuckets,
+        ?array  $jobRoleIds,
+    ): array {
+        $today    = $now->toDateString();
+        $skillIds = $this->employeeQualificationSkillIds($user);
+
+        $baseFacetQuery = function () use ($user, $now, $defaultCloseOffsetDays, $scheduledVisibilityDays, $categoryId, $search, $scope, $skillIds): Builder {
+            $query = $this->baseAvailableQuery($user, $now, $defaultCloseOffsetDays, $scheduledVisibilityDays);
+            $this->applyScope($query, $scope, $skillIds);
+            $this->applyCategoryAndSearch($query, $categoryId, $search);
+
+            return $query;
+        };
+
+        // Type facet — every OTHER filter (level/duration/job role) applies, grouped by course_type.
+        $typeQuery = $baseFacetQuery();
+        $this->applyLevelFilter($typeQuery, $levels);
+        $this->applyJobRoleFilter($typeQuery, $jobRoleIds);
+        $this->applyDurationFilter($typeQuery, $durationBuckets, $today);
+        $typeCounts = $typeQuery
+            ->select('courses.course_type')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('courses.course_type')
+            ->pluck('aggregate', 'courses.course_type');
+
+        // Level facet — every OTHER filter (type/duration/job role) applies, grouped by level.
+        $levelQuery = $baseFacetQuery();
+        $this->applyCourseTypeFilter($levelQuery, $courseTypes);
+        $this->applyJobRoleFilter($levelQuery, $jobRoleIds);
+        $this->applyDurationFilter($levelQuery, $durationBuckets, $today);
+        $levelCounts = $levelQuery
+            ->select('courses.level')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('courses.level')
+            ->pluck('aggregate', 'courses.level');
+
+        // Duration facet — every OTHER filter (type/level/job role) applies, grouped by the raw
+        // week count (cheap: distinct week values, not distinct courses), folded into buckets below.
+        $durationQuery = $baseFacetQuery();
+        $this->applyLevelFilter($durationQuery, $levels);
+        $this->applyCourseTypeFilter($durationQuery, $courseTypes);
+        $this->applyJobRoleFilter($durationQuery, $jobRoleIds);
+        $durationRows = $durationQuery
+            ->selectRaw($this->durationWeeksSql() . ' as weeks', [$today])
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('weeks')
+            ->pluck('aggregate', 'weeks');
+
+        $durationCounts = array_fill_keys(CourseDurationBucket::values(), 0);
+        foreach ($durationRows as $weeks => $count) {
+            $bucket = CourseDurationBucket::fromWeeks($weeks !== null ? (int) $weeks : null);
+            if ($bucket !== null) {
+                $durationCounts[$bucket->value] += (int) $count;
+            }
+        }
+
+        return [
+            'type'     => $this->zeroFillFacet(EnumRegistry::values('course_type'), $typeCounts),
+            'level'    => $this->zeroFillFacet(EnumRegistry::values('course_level'), $levelCounts),
+            'duration' => $durationCounts,
+        ];
     }
 
     public function findForDetail(int $courseId): Course
     {
+        $today = now()->toDateString();
+
         return $this->course->newQuery()
+            ->select('courses.*')
+            // Same single-source-of-truth formula as the list query
+            // (`durationWeeksSql()`) so the S-03 "X weeks" stat always
+            // agrees with the S-02 card/filter for the same course.
+            ->selectRaw($this->durationWeeksSql() . ' as duration_weeks', [$today])
             ->with([
                 'category:id,name',
-                'instructors:id,name,image',
+                'instructors:id,name,image,bio',
                 'qualificationSkills:id,name',
                 'sections' => fn ($q) => $q
                     ->orderBy('start_date')
@@ -264,6 +361,195 @@ final class AcademyRepository implements AcademyRepositoryInterface
         }
 
         return $q;
+    }
+
+    /**
+     * Whitelist + apply the `level` filter (`courses.level`).
+     *
+     * @param  Builder|QueryBuilder     $q
+     * @param  array<int, string>|null  $levels
+     * @return Builder|QueryBuilder
+     */
+    private function applyLevelFilter(Builder|QueryBuilder $q, ?array $levels): Builder|QueryBuilder
+    {
+        if (empty($levels)) {
+            return $q;
+        }
+
+        return $q->whereIn('courses.level', $levels);
+    }
+
+    /**
+     * Whitelist + apply the `type` filter (`courses.course_type`).
+     *
+     * @param  Builder|QueryBuilder     $q
+     * @param  array<int, string>|null  $courseTypes
+     * @return Builder|QueryBuilder
+     */
+    private function applyCourseTypeFilter(Builder|QueryBuilder $q, ?array $courseTypes): Builder|QueryBuilder
+    {
+        if (empty($courseTypes)) {
+            return $q;
+        }
+
+        return $q->whereIn('courses.course_type', $courseTypes);
+    }
+
+    /**
+     * Job Role filter. There is no direct Course↔JobTitle relation — the
+     * join path is Course → QualificationSkill (`course_qualification_skills`)
+     * → JobTitle (`job_title_qualification_skill`). No counts are needed
+     * for this filter (Figma renders Job Role as plain chips), so this is
+     * only ever used to narrow the list query, never for facet counting.
+     *
+     * @param  Builder|QueryBuilder  $q
+     * @param  array<int, int>|null  $jobRoleIds
+     * @return Builder|QueryBuilder
+     */
+    private function applyJobRoleFilter(Builder|QueryBuilder $q, ?array $jobRoleIds): Builder|QueryBuilder
+    {
+        if (empty($jobRoleIds)) {
+            return $q;
+        }
+
+        return $q->whereExists(function ($sub) use ($jobRoleIds) {
+            $sub->from('course_qualification_skills as cqs')
+                ->join('job_title_qualification_skill as jtqs', 'jtqs.qualification_skill_id', '=', 'cqs.qualification_skill_id')
+                ->whereColumn('cqs.course_id', 'courses.id')
+                ->whereIn('jtqs.job_title_id', $jobRoleIds);
+        });
+    }
+
+    /**
+     * Apply the bucketed `duration` filter. Buckets are OR'd together
+     * (a course matches if its computed `duration_weeks` falls in ANY of
+     * the selected buckets); the boundary numbers always come from
+     * `CourseDurationBucket::range()`, never re-hardcoded here.
+     *
+     * @param  Builder|QueryBuilder     $q
+     * @param  array<int, string>|null  $durationBuckets
+     * @return Builder|QueryBuilder
+     */
+    private function applyDurationFilter(Builder|QueryBuilder $q, ?array $durationBuckets, string $today): Builder|QueryBuilder
+    {
+        if (empty($durationBuckets)) {
+            return $q;
+        }
+
+        $buckets = array_values(array_filter(array_map(
+            static fn (string $value) => CourseDurationBucket::tryFrom($value),
+            $durationBuckets,
+        )));
+
+        if (empty($buckets)) {
+            return $q;
+        }
+
+        $sql      = $this->durationWeeksSql();
+        $clauses  = [];
+        $bindings = [];
+
+        foreach ($buckets as $bucket) {
+            [$min, $max] = $bucket->range();
+            $bindings[]  = $today;
+
+            if ($max === null) {
+                $clauses[]  = "({$sql} >= ?)";
+                $bindings[] = $min;
+            } else {
+                $clauses[]  = "({$sql} BETWEEN ? AND ?)";
+                $bindings[] = $min;
+                $bindings[] = $max;
+            }
+        }
+
+        return $q->whereRaw('(' . implode(' OR ', $clauses) . ')', $bindings);
+    }
+
+    private function applyCategoryAndSearch(Builder $q, ?int $categoryId, ?string $search): Builder
+    {
+        $locale = app()->getLocale();
+
+        return $q
+            ->when($categoryId, fn ($inner) => $inner->where('courses.category_id', $categoryId))
+            ->when($search, fn ($inner) => $inner->where(function (Builder $orGroup) use ($search, $locale) {
+                $orGroup->where("courses.title->{$locale}", 'LIKE', "%{$search}%")
+                        ->orWhere('courses.title->en', 'LIKE', "%{$search}%")
+                        ->orWhere('courses.title->ar', 'LIKE', "%{$search}%");
+            }));
+    }
+
+    private function applySort(Builder $q, string $sort, string $today): Builder
+    {
+        return match ($sort) {
+            'newest'        => $q->orderByDesc('courses.created_at'),
+            'highest_rated' => $q->orderByDesc('rating_avg')->orderByDesc('rating_count'),
+            'soonest_start' => $q->orderByRaw(
+                $this->nextStartDateSql() . ' IS NULL, ' . $this->nextStartDateSql() . ' ASC',
+                [$today, $today],
+            ),
+            // `most_relevant` (default) — the original, unchanged ordering.
+            default => $q->orderByDesc('courses.id'),
+        };
+    }
+
+    /**
+     * Scalar subquery: the computed calendar span (in weeks) of the
+     * earliest still-upcoming, non-inactive, fully-dated cohort for this
+     * course. Single source of the "which cohort / which formula" used
+     * both for the `duration_weeks` field (SELECT) and the `duration`
+     * filter + facet counts (WHERE/GROUP BY) — only the bucket BOUNDARY
+     * numbers live outside this method, in `CourseDurationBucket::range()`.
+     *
+     * Bound with exactly one `?` (today's date) per appearance.
+     */
+    private function durationWeeksSql(): string
+    {
+        return '(SELECT CEIL((DATEDIFF(cs_dur.end_date, cs_dur.start_date) + 1) / 7)
+                  FROM course_sections cs_dur
+                  WHERE cs_dur.course_id = courses.id
+                    AND (cs_dur.status IS NULL OR cs_dur.status != "inactive")
+                    AND cs_dur.start_date IS NOT NULL
+                    AND cs_dur.end_date IS NOT NULL
+                    AND cs_dur.start_date >= ?
+                  ORDER BY cs_dur.start_date ASC
+                  LIMIT 1)';
+    }
+
+    /**
+     * Scalar subquery: the earliest still-upcoming, non-inactive cohort
+     * start date for this course — powers the `soonest_start` sort.
+     * Bound with exactly one `?` (today's date) per appearance.
+     */
+    private function nextStartDateSql(): string
+    {
+        return '(SELECT MIN(cs_sort.start_date)
+                  FROM course_sections cs_sort
+                  WHERE cs_sort.course_id = courses.id
+                    AND (cs_sort.status IS NULL OR cs_sort.status != "inactive")
+                    AND cs_sort.start_date >= ?)';
+    }
+
+    /**
+     * Zero-fill every whitelisted enum value so the client always gets a
+     * stable set of keys (an option with zero matches still needs to
+     * render, just disabled/greyed).
+     *
+     * @param  array<int, string>              $allowedValues
+     * @param  Collection<string, int|string>  $counts
+     * @return array<string, int>
+     */
+    private function zeroFillFacet(array $allowedValues, Collection $counts): array
+    {
+        $result = array_fill_keys($allowedValues, 0);
+
+        foreach ($counts as $key => $count) {
+            if ($key !== null && array_key_exists((string) $key, $result)) {
+                $result[(string) $key] = (int) $count;
+            }
+        }
+
+        return $result;
     }
 
     /**

@@ -50,7 +50,7 @@ trait ApiResponse
         return $this->error($message ?: __('messages.unauthenticated'), Response::HTTP_UNAUTHORIZED);
     }
 
-    protected function paginated(string $message, mixed $resource): JsonResponse
+    protected function paginated(string $message, mixed $resource, array $extraMeta = []): JsonResponse
     {
         $paginator = $resource instanceof \Illuminate\Http\Resources\Json\ResourceCollection
             ? $resource->resource
@@ -60,12 +60,12 @@ trait ApiResponse
             'status'  => 'success',
             'message' => $message,
             'result'  => $resource,
-            'meta'    => [
+            'meta'    => array_merge([
                 'current_page' => $paginator->currentPage(),
                 'last_page'    => $paginator->lastPage(),
                 'per_page'     => $paginator->perPage(),
                 'total'        => $paginator->total(),
-            ],
+            ], $extraMeta),
         ]);
     }
 }

@@ -65,6 +65,7 @@ return [
         'scope_general'               => 'General Courses',
         'academy_courses'             => 'Academy courses retrieved.',
         'academy_course_detail'       => 'Course detail retrieved.',
+        'academy_notify_me'           => 'We will notify you when the next cohort opens.',
         'academy_course_unavailable'  => 'This course is no longer available. The cohort may have filled up or enrolment may have closed.',
         'enrolment_success'           => 'You have a confirmed seat.',
         'enrolment_cohort_full'       => 'Enrolment failed — this cohort just filled up.',

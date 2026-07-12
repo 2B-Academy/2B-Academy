@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Http\Requests\Api\Mobile\AcademyCoursesListRequest;
 use App\Http\Requests\Api\Mobile\EnrolmentRequest;
 use App\Http\Resources\Mobile\AcademyCourseCardResource;
 use App\Http\Resources\Mobile\AcademyCourseDetailResource;
@@ -89,26 +90,64 @@ class AcademyController extends MobileBaseController
      *     @OA\Parameter(ref="#/components/parameters/MobileAuthorization"),
      *     @OA\Parameter(ref="#/components/parameters/EmployeeCode"),
      *     @OA\Parameter(ref="#/components/parameters/AcceptLanguage"),
-     *     @OA\Parameter(name="category_id", in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search",      in="query", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="per_page",    in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="scope",       in="query", description="Filter chip: all | special | general", @OA\Schema(type="string", enum={"all","special","general"})),
+     *     @OA\Parameter(name="category_id",  in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="search",       in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="per_page",     in="query", @OA\Schema(type="integer")),
+     *     @OA\Parameter(name="scope",        in="query", description="Filter chip: all | special | general", @OA\Schema(type="string", enum={"all","special","general"})),
+     *     @OA\Parameter(name="level[]",      in="query", description="Catalogue filter — course_level values, repeatable or comma-separated", @OA\Schema(type="array", @OA\Items(type="string", enum={"beginner","intermediate","professional"}))),
+     *     @OA\Parameter(name="type[]",       in="query", description="Catalogue filter — course_type values, repeatable or comma-separated", @OA\Schema(type="array", @OA\Items(type="string", enum={"online","offline","hybrid","external_link"}))),
+     *     @OA\Parameter(name="duration[]",   in="query", description="Catalogue filter — cohort-span bucket, repeatable or comma-separated", @OA\Schema(type="array", @OA\Items(type="string", enum={"1_2_weeks","2_4_weeks","4_8_weeks","8_plus_weeks"}))),
+     *     @OA\Parameter(name="job_role_id[]",in="query", description="Catalogue filter — job_titles.id, repeatable or comma-separated", @OA\Schema(type="array", @OA\Items(type="integer"))),
+     *     @OA\Parameter(name="sort",         in="query", @OA\Schema(type="string", enum={"most_relevant","highest_rated","soonest_start","newest"})),
      *     @OA\Response(response=200, description="OK")
      * )
      */
-    public function courses(Request $request): JsonResponse
+    public function courses(AcademyCoursesListRequest $request): JsonResponse
     {
+        $user = $request->user();
+
+        $categoryId      = $request->integer('category_id') ?: null;
+        $search          = $request->string('search')->toString() ?: null;
+        $perPage         = $request->integer('per_page') ?: null;
+        $scope           = $request->string('scope')->toString() ?: null;
+        $levels          = $request->validated('level');
+        $courseTypes     = $request->validated('type');
+        $durationBuckets = $request->validated('duration');
+        $jobRoleIds      = $request->validated('job_role_id');
+        $sort            = $request->string('sort')->toString() ?: null;
+
         $paginator = $this->academy->listAvailable(
-            user: $request->user(),
-            categoryId: $request->integer('category_id') ?: null,
-            search: $request->string('search')->toString() ?: null,
-            perPage: $request->integer('per_page') ?: null,
-            scope: $request->string('scope')->toString() ?: null,
+            user: $user,
+            categoryId: $categoryId,
+            search: $search,
+            perPage: $perPage,
+            scope: $scope,
+            levels: $levels,
+            courseTypes: $courseTypes,
+            durationBuckets: $durationBuckets,
+            jobRoleIds: $jobRoleIds,
+            sort: $sort,
+        );
+
+        // Type / Level / Duration facet counts for the Catalogue filter
+        // sidebar — reflect whichever OTHER filters are currently
+        // applied (standard faceted search). Job Role and Category are
+        // intentionally excluded (Figma renders those without badges).
+        $filters = $this->academy->filterFacetCounts(
+            user: $user,
+            categoryId: $categoryId,
+            search: $search,
+            scope: $scope,
+            levels: $levels,
+            courseTypes: $courseTypes,
+            durationBuckets: $durationBuckets,
+            jobRoleIds: $jobRoleIds,
         );
 
         return $this->paginated(
             __('messages.mobile.academy_courses'),
             AcademyCourseCardResource::collection($paginator),
+            ['filters' => $filters],
         );
     }
 
@@ -181,5 +220,28 @@ class AcademyController extends MobileBaseController
         ];
 
         return response()->json($payload, $result['outcome']->httpStatus());
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/mobile/academy/courses/{course}/notify-me",
+     *     tags={"Mobile"},
+     *     summary="Notify me for next cohort",
+     *     description="Learner-facing intent storage (NAS-LMS-Website-Business-Flows.md GAP 4): idempotently records that this learner wants to be notified when the course's next cohort opens for enrolment. Storage only — the admin-side trigger that actually sends the notification when a new cohort opens is a separate follow-up.",
+     *     @OA\Parameter(ref="#/components/parameters/MobileAuthorization"),
+     *     @OA\Parameter(ref="#/components/parameters/EmployeeCode"),
+     *     @OA\Parameter(ref="#/components/parameters/AcceptLanguage"),
+     *     @OA\Parameter(name="course", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="OK"),
+     *     @OA\Response(response=404, description="Course not found")
+     * )
+     */
+    public function notifyMe(Request $request, int $course): JsonResponse
+    {
+        $courseModel = Course::findOrFail($course);
+
+        $this->academy->notifyMeForNextCohort($request->user(), $courseModel);
+
+        return $this->success(__('messages.mobile.academy_notify_me'));
     }
 }

@@ -44,9 +44,15 @@ interface AcademyRepositoryInterface
 
     /**
      * Paginated list of courses available to the user, optionally
-     * filtered by category, free-text search and/or scope
-     * (`all` / `special` / `general`).
+     * filtered by category, free-text search, scope
+     * (`all` / `special` / `general`), level, course type, duration
+     * bucket and/or job role — and sorted per `$sort`.
      *
+     * @param  array<int, string>|null  $levels           Whitelisted `courses.level` values.
+     * @param  array<int, string>|null  $courseTypes      Whitelisted `courses.course_type` values.
+     * @param  array<int, string>|null  $durationBuckets  `CourseDurationBucket` values.
+     * @param  array<int, int>|null     $jobRoleIds       `job_titles.id` values.
+     * @param  string                   $sort             `most_relevant|highest_rated|soonest_start|newest`.
      * @return LengthAwarePaginator<Course>
      */
     public function paginateAvailable(
@@ -58,7 +64,48 @@ interface AcademyRepositoryInterface
         ?int    $categoryId,
         ?string $search,
         ?string $scope = null,
+        ?array  $levels = null,
+        ?array  $courseTypes = null,
+        ?array  $durationBuckets = null,
+        ?array  $jobRoleIds = null,
+        string  $sort = 'most_relevant',
     ): LengthAwarePaginator;
+
+    /**
+     * Per-option facet counts for the Type / Level / Duration Catalogue
+     * filter sections, computed against the exact same "available for
+     * this user" predicate as `paginateAvailable()` PLUS every OTHER
+     * currently-applied filter (standard faceted-search behaviour: a
+     * facet never counts against its own selection). Job Role and
+     * Category are excluded — the Figma sidebar renders those without
+     * count badges.
+     *
+     * One grouped aggregate query per facet (three total), never one
+     * query per option.
+     *
+     * @param  array<int, string>|null  $levels
+     * @param  array<int, string>|null  $courseTypes
+     * @param  array<int, string>|null  $durationBuckets
+     * @param  array<int, int>|null     $jobRoleIds
+     * @return array{
+     *     type: array<string, int>,
+     *     level: array<string, int>,
+     *     duration: array<string, int>,
+     * }
+     */
+    public function filterFacetCounts(
+        User    $user,
+        Carbon  $now,
+        int     $defaultCloseOffsetDays,
+        int     $scheduledVisibilityDays,
+        ?int    $categoryId,
+        ?string $search,
+        ?string $scope,
+        ?array  $levels,
+        ?array  $courseTypes,
+        ?array  $durationBuckets,
+        ?array  $jobRoleIds,
+    ): array;
 
     /**
      * Hydrate a course for the detail screen — eager-loads category,

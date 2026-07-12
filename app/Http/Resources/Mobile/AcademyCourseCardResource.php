@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Mobile;
 
+use App\Enums\Mobile\CourseCtaState;
 use App\Enums\Mobile\RatingSentiment;
 use App\Models\Course;
 use App\Services\Mobile\AcademyService;
@@ -53,11 +54,26 @@ class AcademyCourseCardResource extends JsonResource
         $ratingAvg   = (float) ($course->rating_avg ?? 0);
         $ratingCount = (int)   ($course->rating_count ?? 0);
 
+        // S-02 card CTA. Reuses the exact same deadline/capacity rule as
+        // the S-03 detail screen, minus the `isEnrolledInCourse()` round
+        // trip — every course reaching this resource already comes from
+        // the "available for this user" query, which already excludes
+        // any course the learner is enrolled in (see
+        // AcademyRepository::baseAvailableQuery), so resolving that here
+        // per-card would just be a redundant N+1 query.
+        $ctaState = $academy->resolveCtaStateForAvailableCourse($nextCohort);
+
         return [
             'id'               => (int) $course->id,
             'title'            => (string) $course->getTranslation('title', $locale),
             'description'      => $course->getTranslation('description', $locale),
             'course_type'      => $course->course_type,
+            'level'            => $course->level,
+            // Course-level "X weeks" calendar-span stat (Figma Catalogue
+            // card + filter sidebar). See CourseDurationBucket for the
+            // derivation; computed once in SQL by the repository so this
+            // is a plain read, never a per-row calculation.
+            'duration_weeks'   => $course->duration_weeks !== null ? (int) $course->duration_weeks : null,
             'image'            => $this->absoluteUrl($course->image),
             'hours'            => (int) ($course->hours ?? 0),
             'has_certificate'  => (bool) $course->certificate,
@@ -88,6 +104,11 @@ class AcademyCourseCardResource extends JsonResource
                     $settings->ratingMinValue(),
                     $settings->ratingMaxValue(),
                 )->value,
+            ],
+            'cta' => [
+                'state'     => $ctaState->value,
+                'label_key' => "enums.course_cta_state.{$ctaState->value}",
+                'enabled'   => $ctaState->isInteractive() || $ctaState === CourseCtaState::GetNotified,
             ],
             'next_cohort'      => $nextCohort ? [
                 'id'             => (int) $nextCohort->id,
