@@ -10,13 +10,29 @@ class LectureProgressService
 {
     /**
      * Record or update lecture watch progress for a user.
-     * Marks as completed when progress >= 90.
+     *
+     * Two ways to mark a lecture complete:
+     *   - Legacy: numeric `progress` >= 90 (video watch %). Preserved
+     *     exactly for existing callers that never send `confirmed`.
+     *   - New: an explicit `confirmed` boolean — the "Did you complete this
+     *     video?/read this article?" Yes/No prompt (video/document/article)
+     *     and the "Mark as complete" click (link) both resolve to this same
+     *     boolean; no need for a separate field per content type. When
+     *     provided, it wins outright over the numeric-progress rule.
      */
-    public function track(int $userId, int $lectureId, int $progress): UserLectureProgress
+    public function track(int $userId, int $lectureId, ?int $progress, ?bool $confirmed = null): UserLectureProgress
     {
+        if ($confirmed !== null) {
+            $completed = $confirmed;
+            $resolvedProgress = $progress ?? ($confirmed ? 100 : 0);
+        } else {
+            $resolvedProgress = $progress ?? 0;
+            $completed = $resolvedProgress >= 90;
+        }
+
         return UserLectureProgress::updateOrCreate(
             ['user_id' => $userId, 'lecture_id' => $lectureId],
-            ['progress' => $progress, 'completed' => $progress >= 90],
+            ['progress' => $resolvedProgress, 'completed' => $completed],
         );
     }
 
@@ -82,10 +98,21 @@ class LectureProgressService
         return $result;
     }
 
-    /** Get per-lecture progress for a user within a course. */
+    /**
+     * Get per-lecture progress for a user within a course, including the
+     * content-type/completion-signal fields the course-player needs and the
+     * "week/module" grouping the sidebar renders as a heading.
+     *
+     * The grouping field is `course_lectures.section_id` → the enrolling
+     * `course_sections` row's translatable `name` (e.g. "Week 1: CX
+     * Foundations") — confirmed by tracing the Figma sidebar headings
+     * against the schema (course_sections is the only "module" grouping
+     * concept lectures actually belong to; `session_id` is a separate,
+     * optional cohort-scoping FK, not a grouping label).
+     */
     public function getLectureProgress(int $userId, int $courseId): array
     {
-        $course = Course::with('lectures:id,course_id,title')->findOrFail($courseId);
+        $course = Course::with(['lectures.section:id,name'])->findOrFail($courseId);
 
         $progressMap = UserLectureProgress::where('user_id', $userId)
             ->whereIn('lecture_id', $course->lectures->pluck('id'))
@@ -93,8 +120,14 @@ class LectureProgressService
             ->keyBy('lecture_id');
 
         return $course->lectures->map(fn ($lecture) => [
-            'lecture_id' => $lecture->id,
-            'title'      => $lecture->title,
+            'lecture_id'         => $lecture->id,
+            'title'              => $lecture->title,
+            'content_type'       => $lecture->content_type,
+            'require_completion' => (bool) $lecture->require_completion,
+            'module'             => $lecture->section ? [
+                'id'   => $lecture->section->id,
+                'name' => $lecture->section->getTranslation('name', app()->getLocale()),
+            ] : null,
             'progress'   => $progressMap[$lecture->id]->progress ?? 0,
             'completed'  => (bool) ($progressMap[$lecture->id]->completed ?? false),
         ])->all();

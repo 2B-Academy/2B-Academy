@@ -37,8 +37,8 @@ class LectureProgressController extends ApiController
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"progress"},
-     *             @OA\Property(property="progress", type="integer", minimum=0, maximum=100, example=85, description="Watch percentage 0-100.")
+     *             @OA\Property(property="progress", type="integer", minimum=0, maximum=100, example=85, description="Watch percentage 0-100. Required unless `confirmed` is sent."),
+     *             @OA\Property(property="confirmed", type="boolean", nullable=true, description="Explicit completion signal — the video/document/article 'Did you complete this?' Yes/No prompt, or the link module's 'Mark as complete' click. Overrides the numeric-progress rule when present.")
      *         )
      *     ),
      *     @OA\Response(
@@ -70,6 +70,7 @@ class LectureProgressController extends ApiController
             $request->user()->id,
             $lecture->id,
             $request->validated('progress'),
+            $request->has('confirmed') ? $request->boolean('confirmed') : null,
         );
 
         return $this->success(__('messages.updated'), [

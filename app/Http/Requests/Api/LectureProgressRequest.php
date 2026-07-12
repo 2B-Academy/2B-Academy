@@ -14,7 +14,14 @@ class LectureProgressRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'progress' => 'required|integer|min:0|max:100',
+            // `progress` stays required for legacy callers that never send
+            // `confirmed` (numeric watch % is still how they signal
+            // completion). Once `confirmed` is present — the "Did you
+            // complete this video?/read this article?" Yes/No prompt, or
+            // the "Mark as complete" click for link modules — it alone
+            // decides completion and `progress` becomes optional.
+            'progress'  => 'required_without:confirmed|integer|min:0|max:100',
+            'confirmed' => 'nullable|boolean',
         ];
     }
 }
