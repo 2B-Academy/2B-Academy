@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\apis\CertificateStatusController;
 use App\Http\Controllers\apis\LectureProgressController;
 use App\Http\Controllers\apis\UserCourseEvaluationController;
 use App\Http\Controllers\apis\UserDashboardController;
@@ -26,6 +27,9 @@ use Illuminate\Support\Facades\Route;
 |
 | Lecture Progress
 |   POST /courses/{course}/lectures/{lecture}/progress  — report watch progress
+|
+| Certificate status projection
+|   GET  /courses/{course}/certificate-status  — On track / At risk / Blocked
 |
 | Course Evaluation
 |   GET  /courses/{course}/evaluate   — load evaluation form + check already-done
@@ -58,6 +62,9 @@ Route::middleware(['auth.user', 'role:User'])->group(function () {
     // ── Lecture Progress ───────────────────────────────────────────────────
     Route::post('courses/{course}/lectures/{lecture}/progress', [LectureProgressController::class, 'store']);
     Route::get('courses/{course}/my-progress',                  [LectureProgressController::class, 'show']);
+
+    // ── Certificate status projection (On track / At risk / Blocked) ───────
+    Route::get('courses/{course}/certificate-status', [CertificateStatusController::class, 'show']);
 
     // ── Course Evaluation ──────────────────────────────────────────────────
     Route::get('courses/{course}/evaluate',  [UserCourseEvaluationController::class, 'show']);

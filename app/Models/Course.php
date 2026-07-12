@@ -17,6 +17,15 @@ class Course extends Model
 
     protected $guarded = ['id'];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Certificate status projection config (CertificateProjectionService).
+    |--------------------------------------------------------------------------
+    */
+    public const CERTIFICATE_MODE_ATTENDANCE = 'attendance';
+    public const CERTIFICATE_MODE_SCORE      = 'score';
+    public const CERTIFICATE_MODE_BOTH       = 'both';
+
     protected $casts = [
         // Planned session count captured at course creation (Figma
         // 321:7349). Read-only on the course afterwards — cohorts inherit
@@ -26,6 +35,8 @@ class Course extends Model
         // { "en": string[], "ar": string[] }.
         'what_students_will_learn' => 'array',
         'requirements'             => 'array',
+        'certificate_attendance_threshold' => 'integer',
+        'certificate_score_threshold'      => 'integer',
     ];
 
     public function scopeActive($q)
