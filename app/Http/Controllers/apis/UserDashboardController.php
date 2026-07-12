@@ -5,6 +5,7 @@ namespace App\Http\Controllers\apis;
 use App\Http\Resources\CourseResource;
 use App\Http\Resources\UserExamResource;
 use App\Models\User;
+use App\Services\Learner\LearnerDashboardService;
 use App\Services\LectureProgressService;
 use App\Services\UserDashboardService;
 use App\Services\UserExamService;
@@ -18,6 +19,7 @@ class UserDashboardController extends ApiController
         private readonly UserDashboardService  $dashboardService,
         private readonly UserExamService       $examService,
         private readonly LectureProgressService $progressService,
+        private readonly LearnerDashboardService $learnerDashboardService,
     ) {}
 
     /**
@@ -353,5 +355,40 @@ class UserDashboardController extends ApiController
             'overall_progress' => $this->progressService->getCourseProgress($userId, $courseId),
             'lectures'         => $this->progressService->getLectureProgress($userId, $courseId),
         ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/my/learnings",
+     *     tags={"My"},
+     *     summary="Composite 'My Learnings' dashboard — per-course cohort schedule, delivery type, module progress %, and certificate status.",
+     *     security={{"BearerAuth": {}}},
+     *     @OA\Parameter(ref="#/components/parameters/AcceptLanguage"),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Per-course dashboard cards",
+     *         @OA\JsonContent(
+     *             allOf={
+     *                 @OA\Schema(ref="#/components/schemas/SuccessResponse"),
+     *                 @OA\Schema(@OA\Property(
+     *                     property="result",
+     *                     type="array",
+     *                     @OA\Items(type="object")
+     *                 ))
+     *             }
+     *         )
+     *     ),
+     *     @OA\Response(response=401, ref="#/components/responses/Unauthorized")
+     * )
+     */
+    public function learnings(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->success(
+            __('messages.retrieved'),
+            $this->learnerDashboardService->myLearnings($user, $request),
+        );
     }
 }

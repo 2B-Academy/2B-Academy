@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 | Dashboard
 |   GET  /my/dashboard           — personal stats
 |   GET  /my/courses             — enrolled + public courses
+|   GET  /my/learnings           — composite dashboard cards (cohort, progress %, certificate status)
 |   GET  /my/exams               — exam history
 |   GET  /my/exams/{id}          — exam result with answer breakdown
 |   GET  /my/assignments         — assignments + submission status
@@ -54,6 +55,7 @@ Route::middleware(['auth.user', 'role:User'])->group(function () {
         Route::get('progress/{courseId}', [UserDashboardController::class, 'myProgress']);
         Route::get('ratings',             [UserDashboardController::class, 'myRatings']);
         Route::get('lecture-questions',   [UserDashboardController::class, 'myLectureQuestions']);
+        Route::get('learnings',           [UserDashboardController::class, 'learnings']);
     });
 
     // ── Exam Submission ────────────────────────────────────────────────────
