@@ -144,9 +144,14 @@ final class QualificationProgressService
     }
 
     /**
+     * Course ids the user has completed. Public so the learner-web profile
+     * dashboard ({@see \App\Services\Learner\ProfileDashboardService}) can
+     * reuse the exact same "what counts as completed" rule instead of
+     * duplicating the three-source SQL.
+     *
      * @return Collection<int, int>  course ids
      */
-    private function completedCourseIdsForUser(int $userId): Collection
+    public function completedCourseIdsForUser(int $userId): Collection
     {
         // (a) full-completion via lecture progress.
         $fullyByProgress = DB::table('course_lectures')

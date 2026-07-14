@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\Mobile\AcademyController;
+use App\Http\Controllers\Api\Mobile\CertificateController;
+use App\Http\Controllers\Api\Mobile\MyLearningController;
+use App\Http\Controllers\apis\Learner\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,4 +36,30 @@ Route::middleware(['auth.user', 'role:User'])
         // only for now; see NAS-LMS-Website-Business-Flows.md GAP 4).
         Route::post('courses/{course}/notify-me', [AcademyController::class, 'notifyMe'])
             ->whereNumber('course');
+    });
+
+/*
+| Learner Profile dashboard — /api/v1/learner/profile/*
+|
+| The browser Profile screen (Qualifications + My Learnings dashboard). The
+| header counters and the rich per-qualification earned/uncovered course
+| breakdown are web-only projections owned by ProfileController; the
+| My-Learning / certificate / rating shapes reuse the mobile controllers
+| verbatim (identical service layer, resolved via $request->user()).
+*/
+Route::middleware(['auth.user', 'role:User'])
+    ->prefix('learner/profile')
+    ->group(function () {
+        Route::get('summary',        [ProfileController::class, 'summary']);
+        Route::get('qualifications', [ProfileController::class, 'qualifications']);
+        Route::get('completed',      [ProfileController::class, 'completed']);
+
+        Route::get('learnings',    [MyLearningController::class, 'active']);
+        Route::get('certificates', [MyLearningController::class, 'certificates']);
+        Route::get('courses/{course}/sessions', [MyLearningController::class, 'sessions'])
+            ->whereNumber('course');
+        Route::post('courses/{course}/rating',  [MyLearningController::class, 'submitRating'])
+            ->whereNumber('course');
+        Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
+            ->whereNumber('certificate');
     });
