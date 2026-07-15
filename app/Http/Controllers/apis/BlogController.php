@@ -44,6 +44,15 @@ class BlogController extends ApiController
     }
 
     /**
+     * Job-title options for the listing "Job Role" filter — only titles tied
+     * to a qualification that a published blog actually uses. Localized.
+     */
+    public function jobTitleFilters(): JsonResponse
+    {
+        return $this->success(__('messages.retrieved'), $this->service->jobTitleFilters());
+    }
+
+    /**
      * A single published blog by slug (with sections + author bio).
      */
     public function show(string $slug): JsonResponse

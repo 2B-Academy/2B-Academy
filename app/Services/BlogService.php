@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Http\Traits\HasFile;
 use App\Models\Blog;
+use App\Models\JobTitle;
 use App\Repositories\Contracts\BlogRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
@@ -43,6 +44,40 @@ class BlogService
     public function related(Blog $blog, int $limit = 3): Collection
     {
         return $this->repo->related($blog, $limit);
+    }
+
+    /**
+     * Job titles usable as listing filters — ONLY those linked (via
+     * job_title_qualification_skill) to a qualification that is actually
+     * assigned to a published blog. Localized to the active locale.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function jobTitleFilters(): array
+    {
+        $qualIds = Blog::query()->published()
+            ->whereNotNull('qualification_skill_id')
+            ->distinct()
+            ->pluck('qualification_skill_id')
+            ->all();
+
+        if (! $qualIds) {
+            return [];
+        }
+
+        $jobTitleIds = DB::table('job_title_qualification_skill')
+            ->whereIn('qualification_skill_id', $qualIds)
+            ->distinct()
+            ->pluck('job_title_id')
+            ->all();
+
+        return JobTitle::query()
+            ->whereIn('id', $jobTitleIds)
+            ->get()
+            ->map(fn (JobTitle $jt) => ['id' => $jt->id, 'name' => $jt->getLocalizedName()])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     /*
