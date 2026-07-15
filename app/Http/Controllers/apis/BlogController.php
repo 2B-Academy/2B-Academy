@@ -10,6 +10,7 @@ use App\Models\Blog;
 use App\Services\BlogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BlogController extends ApiController
 {
@@ -34,6 +35,7 @@ class BlogController extends ApiController
                 'level'                  => $request->get('level'),
                 'qualification_skill_id' => $request->get('qualification_skill_id'),
                 'qualification_ids'      => $this->arrayFilter($request->get('qualification_ids')),
+                'job_title_ids'          => $this->arrayFilter($request->get('job_title_ids')),
                 'only_published'         => true,
             ],
         );
@@ -62,19 +64,34 @@ class BlogController extends ApiController
      */
     public function tailoredIndex(Request $request): JsonResponse
     {
-        $ids = $request->user()?->jobTitle
+        $userIds = $request->user()?->jobTitle
             ?->qualificationSkills()
             ->pluck('qualification_skills.id')
             ->all() ?? [];
 
+        // A Job Title filter narrows the tailored set to the qualifications
+        // shared by the selected job titles ∩ the learner's own qualifications.
+        $jobTitleIds = $this->arrayFilter($request->get('job_title_ids'));
+        if ($jobTitleIds) {
+            $jtQuals = DB::table('job_title_qualification_skill')
+                ->whereIn('job_title_id', $jobTitleIds)
+                ->pluck('qualification_skill_id')
+                ->all();
+            $ids = array_values(array_intersect($userIds, $jtQuals));
+            if (! $ids) {
+                $ids = $userIds; // selected role isn't the learner's — keep their feed
+            }
+        } else {
+            $ids = $userIds;
+        }
+
         $blogs = $this->service->paginate(
             perPage: (int) $request->get('per_page', 9),
             filters: [
-                'search'                 => $request->get('search'),
-                'level'                  => $request->get('level'),
-                'qualification_skill_id' => $request->get('qualification_skill_id'),
-                'qualification_ids'      => count($ids) ? $ids : null,
-                'only_published'         => true,
+                'search'            => $request->get('search'),
+                'level'             => $request->get('level'),
+                'qualification_ids' => count($ids) ? $ids : null,
+                'only_published'    => true,
             ],
         );
 

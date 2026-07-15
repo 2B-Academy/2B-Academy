@@ -20,6 +20,7 @@ class BlogRepository extends BaseRepository implements BlogRepositoryInterface
         $level            = $filters['level'] ?? null;
         $qualificationId  = $filters['qualification_skill_id'] ?? null;
         $qualificationIds = $filters['qualification_ids'] ?? null;
+        $jobTitleIds      = $filters['job_title_ids'] ?? null;
         $onlyPublished    = $filters['only_published'] ?? false;
 
         return $this->model->newQuery()
@@ -31,10 +32,18 @@ class BlogRepository extends BaseRepository implements BlogRepositoryInterface
                     ->orWhere('subtitle->ar', 'like', "%{$search}%")
                     ->orWhere('subtitle->en', 'like', "%{$search}%");
             }))
-            ->when($level, fn ($q) => $q->where('level', $level))
+            ->when($level, fn ($q) => $q->whereIn('level', is_array($level) ? $level : explode(',', $level)))
             ->when($qualificationId, fn ($q) => $q->where('qualification_skill_id', $qualificationId))
             ->when(is_array($qualificationIds) && count($qualificationIds), fn ($q) =>
                 $q->whereIn('qualification_skill_id', $qualificationIds))
+            // Filter by job title → blogs whose linked qualification is mapped
+            // to any of the selected job titles (job_title_qualification_skill).
+            ->when(is_array($jobTitleIds) && count($jobTitleIds), fn ($q) =>
+                $q->whereIn('qualification_skill_id', function ($sub) use ($jobTitleIds) {
+                    $sub->select('qualification_skill_id')
+                        ->from('job_title_qualification_skill')
+                        ->whereIn('job_title_id', $jobTitleIds);
+                }))
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->paginate($perPage);
