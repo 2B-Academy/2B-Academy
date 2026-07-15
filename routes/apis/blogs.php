@@ -16,6 +16,9 @@ Route::get('blogs',                 [BlogController::class, 'index']);
 Route::get('blogs/{slug}/related',  [BlogController::class, 'related']);
 Route::get('blogs/{slug}',          [BlogController::class, 'show']);
 
+// ── Learner (website "Tailored for Me") ────────────────────────────────────
+Route::middleware('auth.user')->get('learner/blogs', [BlogController::class, 'tailoredIndex']);
+
 // ── Admin (dashboard) ──────────────────────────────────────────────────────
 Route::prefix('admin')->middleware(['auth.user', 'role:Admin'])->group(function () {
     Route::get('blogs',            [BlogController::class, 'adminIndex']);

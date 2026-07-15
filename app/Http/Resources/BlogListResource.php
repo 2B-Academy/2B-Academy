@@ -33,7 +33,7 @@ class BlogListResource extends JsonResource
                 ]
                 : null,
             'author'        => $this->authorPayload(),
-            'added_by'      => $this->creator instanceof User ? $this->creator->getLocalizedName() : null,
+            'added_by'      => $this->creator?->name,
             'published_at'  => $this->published_at?->format('Y-m-d'),
             'created_at'    => $this->created_at?->format('Y-m-d'),
             'active'        => (bool) $this->active,

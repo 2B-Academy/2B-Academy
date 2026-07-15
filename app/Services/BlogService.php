@@ -58,7 +58,7 @@ class BlogService
         return DB::transaction(function () use ($request, $data) {
             $attributes = $this->baseAttributes($data);
             $attributes['slug']               = $this->uniqueSlug($this->titleForSlug($data));
-            $attributes['created_by_user_id'] = $request->user()?->id;
+            $attributes['created_by_admin_id'] = $request->user()?->id;
             $attributes['image']              = $request->hasFile('image')
                 ? $this->uploadRequestFile('Blog', request(), 'image')
                 : null;

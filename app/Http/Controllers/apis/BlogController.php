@@ -56,6 +56,32 @@ class BlogController extends ApiController
     }
 
     /**
+     * "Tailored for Me" — published blogs scoped to the authenticated user's
+     * job-title qualifications. Falls back to all published blogs when the
+     * user has no linked qualifications, so the tab is never empty.
+     */
+    public function tailoredIndex(Request $request): JsonResponse
+    {
+        $ids = $request->user()?->jobTitle
+            ?->qualificationSkills()
+            ->pluck('qualification_skills.id')
+            ->all() ?? [];
+
+        $blogs = $this->service->paginate(
+            perPage: (int) $request->get('per_page', 9),
+            filters: [
+                'search'                 => $request->get('search'),
+                'level'                  => $request->get('level'),
+                'qualification_skill_id' => $request->get('qualification_skill_id'),
+                'qualification_ids'      => count($ids) ? $ids : null,
+                'only_published'         => true,
+            ],
+        );
+
+        return $this->paginated(__('messages.retrieved'), BlogListResource::collection($blogs));
+    }
+
+    /**
      * Related published blogs for the reading page rail.
      */
     public function related(string $slug): JsonResponse

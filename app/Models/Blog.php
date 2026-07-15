@@ -77,7 +77,7 @@ class Blog extends Model
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by_user_id');
+        return $this->belongsTo(Admin::class, 'created_by_admin_id');
     }
 
     public function qualificationSkill(): BelongsTo
