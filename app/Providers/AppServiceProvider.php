@@ -7,6 +7,7 @@ use App\Repositories\Contracts\JobTitleRepositoryInterface;
 use App\Repositories\Contracts\AdminRepositoryInterface;
 use App\Repositories\Contracts\ArticleRepositoryInterface;
 use App\Repositories\Contracts\AttendanceRepositoryInterface;
+use App\Repositories\Contracts\BlogRepositoryInterface;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
 use App\Repositories\Contracts\CertificateRepositoryInterface;
 use App\Repositories\Contracts\CourseAssignmentRepositoryInterface;
@@ -49,6 +50,7 @@ use App\Repositories\Eloquents\JobTitleRepository;
 use App\Repositories\Eloquents\AdminRepository;
 use App\Repositories\Eloquents\ArticleRepository;
 use App\Repositories\Eloquents\AttendanceRepository;
+use App\Repositories\Eloquents\BlogRepository;
 use App\Repositories\Eloquents\CategoryRepository;
 use App\Repositories\Eloquents\CertificateRepository;
 use App\Repositories\Eloquents\CourseAssignmentRepository;
@@ -111,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
 
         // New repository bindings
         $this->app->bind(ArticleRepositoryInterface::class,            ArticleRepository::class);
+        $this->app->bind(BlogRepositoryInterface::class,               BlogRepository::class);
         $this->app->bind(AdminRepositoryInterface::class,              AdminRepository::class);
         $this->app->bind(AboutRepositoryInterface::class,              AboutRepository::class);
         $this->app->bind(TestimonialRepositoryInterface::class,        TestimonialRepository::class);
