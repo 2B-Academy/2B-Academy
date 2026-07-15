@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\apis;
 
 use App\Http\Requests\Api\BlogRequest;
+use App\Http\Resources\Admin\AdminBlogResource;
 use App\Http\Resources\BlogListResource;
 use App\Http\Resources\BlogResource;
 use App\Models\Blog;
@@ -94,21 +95,21 @@ class BlogController extends ApiController
 
     public function adminShow(Blog $blog): JsonResponse
     {
-        return $this->success(__('messages.retrieved'), new BlogResource($this->service->findForEdit($blog)));
+        return $this->success(__('messages.retrieved'), new AdminBlogResource($this->service->findForEdit($blog)));
     }
 
     public function store(BlogRequest $request): JsonResponse
     {
         $blog = $this->service->create($request);
 
-        return $this->created(__('messages.created'), new BlogResource($blog));
+        return $this->created(__('messages.created'), new AdminBlogResource($blog));
     }
 
     public function update(Blog $blog, BlogRequest $request): JsonResponse
     {
         $updated = $this->service->update($blog, $request);
 
-        return $this->success(__('messages.updated'), new BlogResource($updated));
+        return $this->success(__('messages.updated'), new AdminBlogResource($updated));
     }
 
     public function destroy(Blog $blog): JsonResponse
