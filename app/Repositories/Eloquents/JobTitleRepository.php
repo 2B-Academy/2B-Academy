@@ -71,8 +71,12 @@ class JobTitleRepository extends BaseRepository implements JobTitleRepositoryInt
 
     public function allForSelect(): Collection
     {
+        // Select the bilingual columns too: JobTitleResource resolves the label
+        // via JobTitle::getLocalizedName(), which reads name_en / name_ar. If
+        // those columns aren't selected they load as null and the resource
+        // silently falls back to the (Arabic) `name` for every locale.
         return $this->model->newQuery()
-            ->select(['id', 'name'])
+            ->select(['id', 'name', 'name_ar', 'name_en'])
             ->orderBy('name')
             ->get();
     }
