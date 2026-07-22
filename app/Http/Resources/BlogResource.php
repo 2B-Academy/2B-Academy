@@ -14,10 +14,11 @@ class BlogResource extends BlogListResource
     public function toArray(Request $request): array
     {
         return array_merge(parent::toArray($request), [
-            'author_user_id'         => $this->author_user_id,
-            'is_anonymous'           => (bool) $this->is_anonymous,
-            'qualification_skill_id' => $this->qualification_skill_id,
-            'author_bio'             => $this->authorBio(),
+            'author_user_id'          => $this->author_user_id,
+            'is_anonymous'            => (bool) $this->is_anonymous,
+            // Ids for the (multi-select) edit form to prefill.
+            'qualification_skill_ids' => $this->qualificationSkills->pluck('id')->values(),
+            'author_bio'              => $this->authorBio(),
             'sections'               => BlogSectionResource::collection(
                 $this->whenLoaded('sections')
             ),

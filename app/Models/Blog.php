@@ -7,6 +7,7 @@ use App\Http\Traits\HelperTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
@@ -80,8 +81,17 @@ class Blog extends Model
         return $this->belongsTo(Admin::class, 'created_by_admin_id');
     }
 
-    public function qualificationSkill(): BelongsTo
+    /**
+     * Qualification skills this blog surfaces under. A blog can now be tagged
+     * with several qualifications (was a single `qualification_skill_id` FK).
+     */
+    public function qualificationSkills(): BelongsToMany
     {
-        return $this->belongsTo(QualificationSkill::class);
+        return $this->belongsToMany(
+            QualificationSkill::class,
+            'blog_qualification_skill',
+            'blog_id',
+            'qualification_skill_id',
+        );
     }
 }

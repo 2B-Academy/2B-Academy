@@ -46,7 +46,8 @@ class BlogRequest extends FormRequest
             'author_user_id'          => 'required_if:is_anonymous,false|nullable|exists:users,id',
 
             'reading_time'            => 'required|integer|min:1|max:1000',
-            'qualification_skill_id'  => 'nullable|exists:qualification_skills,id',
+            'qualification_skill_ids'   => 'nullable|array',
+            'qualification_skill_ids.*' => 'integer|exists:qualification_skills,id',
 
             'active'                  => 'boolean',
             'published_at'            => 'nullable|date',

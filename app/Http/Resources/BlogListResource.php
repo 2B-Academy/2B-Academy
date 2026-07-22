@@ -26,12 +26,16 @@ class BlogListResource extends JsonResource
             'image'         => $this->image ? $this->getFileUrl($this->image) : null,
             'level'         => $this->level,
             'reading_time'  => $this->reading_time !== null ? (int) $this->reading_time : null,
-            'qualification' => $this->qualificationSkill
-                ? [
-                    'id'   => $this->qualificationSkill->id,
-                    'name' => $this->qualificationSkill->getTranslation('name', $locale),
-                ]
-                : null,
+            // Blogs can carry several qualifications now. `qualifications` is the
+            // full list; `qualification` stays as the first entry for backward
+            // compatibility with existing single-tag consumers.
+            'qualifications' => $qualifications = $this->qualificationSkills
+                ->map(fn ($skill) => [
+                    'id'   => $skill->id,
+                    'name' => $skill->getTranslation('name', $locale),
+                ])
+                ->values(),
+            'qualification' => $qualifications->first(),
             'author'        => $this->authorPayload(),
             'added_by'      => $this->creator?->name,
             'published_at'  => $this->published_at?->format('Y-m-d'),

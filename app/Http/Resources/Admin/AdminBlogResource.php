@@ -27,10 +27,13 @@ class AdminBlogResource extends JsonResource
             'author_name'            => $this->author instanceof User ? $this->author->getLocalizedName() : null,
             'is_anonymous'           => (bool) $this->is_anonymous,
             'reading_time'           => $this->reading_time !== null ? (int) $this->reading_time : null,
-            'qualification_skill_id' => $this->qualification_skill_id,
-            'qualification_name'     => $this->qualificationSkill
-                ? $this->qualificationSkill->getTranslation('name', app()->getLocale())
-                : null,
+            // Multiple qualifications: ids for the multi-select, plus a labelled
+            // list for display.
+            'qualification_skill_ids' => $this->qualificationSkills->pluck('id')->values(),
+            'qualifications'          => $this->qualificationSkills->map(fn ($skill) => [
+                'id'   => $skill->id,
+                'name' => $skill->getTranslation('name', app()->getLocale()),
+            ])->values(),
             'active'                 => (bool) $this->active,
             'published_at'           => $this->published_at?->format('Y-m-d'),
             'sections'               => AdminBlogSectionResource::collection($this->whenLoaded('sections')),

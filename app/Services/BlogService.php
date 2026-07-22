@@ -38,7 +38,7 @@ class BlogService
 
     public function findForEdit(Blog $blog): Blog
     {
-        return $blog->load(['author', 'creator', 'qualificationSkill', 'sections']);
+        return $blog->load(['author', 'creator', 'qualificationSkills', 'sections']);
     }
 
     public function related(Blog $blog, int $limit = 3): Collection
@@ -55,8 +55,10 @@ class BlogService
      */
     public function jobTitleFilters(): array
     {
-        $qualIds = Blog::query()->published()
-            ->whereNotNull('qualification_skill_id')
+        $publishedBlogIds = Blog::query()->published()->pluck('id');
+
+        $qualIds = DB::table('blog_qualification_skill')
+            ->whereIn('blog_id', $publishedBlogIds)
             ->distinct()
             ->pluck('qualification_skill_id')
             ->all();
@@ -101,6 +103,7 @@ class BlogService
             /** @var Blog $blog */
             $blog = $this->repo->create($attributes);
 
+            $blog->qualificationSkills()->sync($data['qualification_skill_ids'] ?? []);
             $this->syncSections($blog, $request, $data['sections'] ?? []);
 
             return $this->findForEdit($blog);
@@ -120,6 +123,9 @@ class BlogService
 
             $this->repo->update($blog, $attributes);
 
+            if (array_key_exists('qualification_skill_ids', $data)) {
+                $blog->qualificationSkills()->sync($data['qualification_skill_ids'] ?? []);
+            }
             $this->syncSections($blog, $request, $data['sections'] ?? []);
 
             return $this->findForEdit($blog->refresh());
@@ -152,7 +158,6 @@ class BlogService
             'is_anonymous'           => (bool) ($data['is_anonymous'] ?? false),
             'author_user_id'         => ($data['is_anonymous'] ?? false) ? null : ($data['author_user_id'] ?? null),
             'reading_time'           => $data['reading_time'],
-            'qualification_skill_id' => $data['qualification_skill_id'] ?? null,
             'active'                 => (bool) ($data['active'] ?? true),
             'published_at'           => $data['published_at'] ?? now()->toDateString(),
         ];
