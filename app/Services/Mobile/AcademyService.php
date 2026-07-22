@@ -10,11 +10,13 @@ use App\Enums\Mobile\CourseDurationBucket;
 use App\Models\Course;
 use App\Models\CourseNotifyInterest;
 use App\Models\CourseSection;
+use App\Models\JobTitle;
 use App\Models\User;
 use App\Repositories\Contracts\Mobile\AcademyRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Discovery + enrolment intent for the Academy (S-01 → S-04).
@@ -64,7 +66,7 @@ final class AcademyService
      *
      * @return Collection<int, array{key: string, label: string, count: int, is_all: bool}>
      */
-    public function scopeChipsFor(User $user, string $locale): Collection
+    public function scopeChipsFor(?User $user, string $locale): Collection
     {
         $counts = $this->repository->scopeCounts(
             $user,
@@ -94,7 +96,7 @@ final class AcademyService
      * @param  array<int, int>|null     $jobRoleIds       `job_titles.id` values.
      */
     public function listAvailable(
-        User    $user,
+        ?User   $user,
         ?int    $categoryId,
         ?string $search,
         ?int    $perPage,
@@ -138,7 +140,7 @@ final class AcademyService
      * @return array{type: array<string, int>, level: array<string, int>, duration: array<string, int>}
      */
     public function filterFacetCounts(
-        User    $user,
+        ?User   $user,
         ?int    $categoryId,
         ?string $search,
         ?string $scope = null,
@@ -160,6 +162,48 @@ final class AcademyService
             durationBuckets: $this->normaliseDurationBuckets($durationBuckets),
             jobRoleIds: $this->normaliseJobRoleIds($jobRoleIds),
         );
+    }
+
+    /**
+     * Job Role filter options for the catalogue sidebar — only the job titles
+     * actually reachable from a catalogue course. A course reaches a job title
+     * through its qualification skills (course → course_qualification_skills →
+     * job_title_qualification_skill → job_titles), so listing every active job
+     * title (as `/job-titles/active` does) would offer filters that can never
+     * match a result. Mirrors BlogService::jobTitleFilters().
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function jobRoleFilters(): array
+    {
+        $qualIds = DB::table('course_qualification_skills as cqs')
+            ->join('courses', 'courses.id', '=', 'cqs.course_id')
+            ->where('courses.active', 1)
+            ->distinct()
+            ->pluck('cqs.qualification_skill_id')
+            ->all();
+
+        if ($qualIds === []) {
+            return [];
+        }
+
+        $jobTitleIds = DB::table('job_title_qualification_skill')
+            ->whereIn('qualification_skill_id', $qualIds)
+            ->distinct()
+            ->pluck('job_title_id')
+            ->all();
+
+        if ($jobTitleIds === []) {
+            return [];
+        }
+
+        return JobTitle::query()
+            ->whereIn('id', $jobTitleIds)
+            ->get()
+            ->map(fn (JobTitle $jt) => ['id' => $jt->id, 'name' => $jt->getLocalizedName()])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     /**
@@ -281,17 +325,20 @@ final class AcademyService
      * THIS user — either the next joinable cohort, or the one they're
      * already enrolled in if any.
      */
-    public function anchorCohortFor(Course $course, User $user): ?CourseSection
+    public function anchorCohortFor(Course $course, ?User $user): ?CourseSection
     {
         // 1. Already-enrolled cohort wins so the CTA reads "Enrolled ✓".
-        $enrolledCohortId = \DB::table('users_courses')
-            ->where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->value('group_id');
+        //    A guest has no enrolments, so skip straight to the next joinable.
+        if ($user !== null) {
+            $enrolledCohortId = \DB::table('users_courses')
+                ->where('user_id', $user->id)
+                ->where('course_id', $course->id)
+                ->value('group_id');
 
-        if (!empty($enrolledCohortId)) {
-            return $course->sections->firstWhere('id', (int) $enrolledCohortId)
-                ?? CourseSection::query()->find($enrolledCohortId);
+            if (!empty($enrolledCohortId)) {
+                return $course->sections->firstWhere('id', (int) $enrolledCohortId)
+                    ?? CourseSection::query()->find($enrolledCohortId);
+            }
         }
 
         return $this->repository->nextJoinableCohort(
@@ -306,9 +353,12 @@ final class AcademyService
     /**
      * Compute the CTA state for the S-03 sticky button.
      */
-    public function resolveCtaState(Course $course, User $user, ?CourseSection $anchorCohort): CourseCtaState
+    public function resolveCtaState(Course $course, ?User $user, ?CourseSection $anchorCohort): CourseCtaState
     {
-        if ($this->repository->isEnrolledInCourse($user, $course->id)) {
+        // A guest is never enrolled — the CTA is purely deadline/capacity
+        // driven (EnrolNow / GetNotified / Unavailable). The frontend gates the
+        // actual enrolment behind a login prompt.
+        if ($user !== null && $this->repository->isEnrolledInCourse($user, $course->id)) {
             return CourseCtaState::EnrolledViewLearning;
         }
 

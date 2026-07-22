@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminLogMiddleware;
 use App\Http\Middleware\ApiProtectMiddleware;
 use App\Http\Middleware\AuthenticationMiddleware;
+use App\Http\Middleware\OptionalAuthenticationMiddleware;
 use App\Http\Middleware\ResolveMobileEmployeeMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SetLocale;
@@ -73,6 +74,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             // API authentication — validates Sanctum bearer token
             'auth.user'          => AuthenticationMiddleware::class,
+            // API optional authentication — resolves the user when a valid
+            // token is present, but never rejects guests (public browse).
+            'auth.user.optional' => OptionalAuthenticationMiddleware::class,
             // API role check — role:Admin | role:User | role:Admin,User
             'role'               => RoleMiddleware::class,
             // Spatie permission package middlewares (Laravel 11 no longer

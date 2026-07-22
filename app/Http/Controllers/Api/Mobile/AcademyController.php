@@ -82,6 +82,19 @@ class AcademyController extends MobileBaseController
     }
 
     /**
+     * Job Role filter options for the catalogue sidebar — only job titles
+     * reachable from a catalogue course via its qualification skills (not the
+     * full active-job-title list), so every chip maps to a real result.
+     */
+    public function jobRoleFilters(): JsonResponse
+    {
+        return $this->success(
+            __('messages.retrieved'),
+            $this->academy->jobRoleFilters(),
+        );
+    }
+
+    /**
      * @OA\Get(
      *     path="/mobile/academy/courses",
      *     tags={"Mobile"},

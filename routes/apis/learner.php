@@ -22,14 +22,27 @@ use Illuminate\Support\Facades\Route;
 | the same controller methods serve both surfaces unchanged.
 |
 */
-Route::middleware(['auth.user', 'role:User'])
-    ->prefix('learner/academy')
-    ->group(function () {
-        Route::get('summary',               [AcademyController::class, 'summary']);
-        Route::get('scopes',                [AcademyController::class, 'scopes']);
-        Route::get('courses',               [AcademyController::class, 'courses']);
-        Route::get('courses/{course}',      [AcademyController::class, 'show'])
+Route::prefix('learner/academy')->group(function () {
+    // Public catalogue browse: optional auth. A guest sees only `for_public`
+    // (General) courses; an authenticated learner gets the personalised
+    // All / Special / General split. Same controller methods either way —
+    // they resolve the learner via $request->user(), which is simply null
+    // for a guest.
+    Route::middleware('auth.user.optional')->group(function () {
+        Route::get('scopes',           [AcademyController::class, 'scopes']);
+        Route::get('courses',          [AcademyController::class, 'courses']);
+        Route::get('job-role-filters', [AcademyController::class, 'jobRoleFilters']);
+        // Detail view is public too: a guest can open a course page and gets a
+        // guest-shaped CTA (EnrolNow/GetNotified) — enrolment itself still
+        // requires login (the frontend shows a login prompt).
+        Route::get('courses/{course}', [AcademyController::class, 'show'])
             ->whereNumber('course');
+    });
+
+    // Authenticated learner only — enrolment and notify-intent require an
+    // identified user.
+    Route::middleware(['auth.user', 'role:User'])->group(function () {
+        Route::get('summary',          [AcademyController::class, 'summary']);
         Route::post('courses/{course}/enrol', [AcademyController::class, 'enrol'])
             ->whereNumber('course');
         // GAP 4 — "Notify me for next cohort" intent storage (learner-web
@@ -37,6 +50,7 @@ Route::middleware(['auth.user', 'role:User'])
         Route::post('courses/{course}/notify-me', [AcademyController::class, 'notifyMe'])
             ->whereNumber('course');
     });
+});
 
 /*
 | Learner Profile dashboard — /api/v1/learner/profile/*

@@ -40,7 +40,7 @@ interface AcademyRepositoryInterface
      *
      * @return array{all: int, special: int, general: int}
      */
-    public function scopeCounts(User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): array;
+    public function scopeCounts(?User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): array;
 
     /**
      * Paginated list of courses available to the user, optionally
@@ -56,7 +56,7 @@ interface AcademyRepositoryInterface
      * @return LengthAwarePaginator<Course>
      */
     public function paginateAvailable(
-        User    $user,
+        ?User   $user,
         Carbon  $now,
         int     $defaultCloseOffsetDays,
         int     $scheduledVisibilityDays,
@@ -94,7 +94,7 @@ interface AcademyRepositoryInterface
      * }
      */
     public function filterFacetCounts(
-        User    $user,
+        ?User   $user,
         Carbon  $now,
         int     $defaultCloseOffsetDays,
         int     $scheduledVisibilityDays,
@@ -120,7 +120,7 @@ interface AcademyRepositoryInterface
      * none exists. "Joinable" = stored status not `inactive`, start
      * date >= today, enrolment deadline >= today, and seats remaining.
      */
-    public function nextJoinableCohort(Course $course, User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): ?CourseSection;
+    public function nextJoinableCohort(Course $course, ?User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): ?CourseSection;
 
     /**
      * Is the user already enrolled in this course?

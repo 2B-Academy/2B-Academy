@@ -60,7 +60,7 @@ final class AcademyRepository implements AcademyRepositoryInterface
      *
      * @return array{all: int, special: int, general: int}
      */
-    public function scopeCounts(User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): array
+    public function scopeCounts(?User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): array
     {
         $skillIds = $this->employeeQualificationSkillIds($user);
 
@@ -78,7 +78,7 @@ final class AcademyRepository implements AcademyRepositoryInterface
     }
 
     public function paginateAvailable(
-        User    $user,
+        ?User   $user,
         Carbon  $now,
         int     $defaultCloseOffsetDays,
         int     $scheduledVisibilityDays,
@@ -142,7 +142,7 @@ final class AcademyRepository implements AcademyRepositoryInterface
      * @inheritDoc
      */
     public function filterFacetCounts(
-        User    $user,
+        ?User   $user,
         Carbon  $now,
         int     $defaultCloseOffsetDays,
         int     $scheduledVisibilityDays,
@@ -245,7 +245,7 @@ final class AcademyRepository implements AcademyRepositoryInterface
             ->findOrFail($courseId);
     }
 
-    public function nextJoinableCohort(Course $course, User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): ?CourseSection
+    public function nextJoinableCohort(Course $course, ?User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): ?CourseSection
     {
         $today      = $now->toDateString();
         $offset     = max(0, $defaultCloseOffsetDays);
@@ -282,12 +282,12 @@ final class AcademyRepository implements AcademyRepositoryInterface
                 $q->whereNull('capacity')
                   ->orWhereRaw('(SELECT COUNT(*) FROM users_courses uc WHERE uc.group_id = course_sections.id) < course_sections.capacity');
             })
-            // Skip cohorts the user is already in.
-            ->whereNotExists(function ($q) use ($user) {
-                $q->from('users_courses')
-                  ->whereColumn('users_courses.group_id', 'course_sections.id')
-                  ->where('users_courses.user_id', $user->id);
-            })
+            // Skip cohorts the user is already in (a guest has none).
+            ->when($user !== null, fn ($q) => $q->whereNotExists(function ($sub) use ($user) {
+                $sub->from('users_courses')
+                    ->whereColumn('users_courses.group_id', 'course_sections.id')
+                    ->where('users_courses.user_id', $user->id);
+            }))
             ->orderBy('start_date')
             ->orderBy('id')
             ->first();
@@ -560,9 +560,9 @@ final class AcademyRepository implements AcademyRepositoryInterface
      *
      * @return array<int, int>
      */
-    private function employeeQualificationSkillIds(User $user): array
+    private function employeeQualificationSkillIds(?User $user): array
     {
-        if (empty($user->job_title_id)) {
+        if (empty($user?->job_title_id)) {
             return [];
         }
 
@@ -573,26 +573,39 @@ final class AcademyRepository implements AcademyRepositoryInterface
             ->all();
     }
 
-    private function baseAvailableQuery(User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): Builder
+    private function baseAvailableQuery(?User $user, Carbon $now, int $defaultCloseOffsetDays, int $scheduledVisibilityDays): Builder
     {
         $today      = $now->toDateString();
         $offset     = max(0, $defaultCloseOffsetDays);
         $visibility = max(0, $scheduledVisibilityDays);
 
-        return $this->course->newQuery()
+        $query = $this->course->newQuery()
             ->where(function ($q) use ($user, $today, $offset, $visibility) {
                 $this->applyAvailableExists($q, $user, $today, $offset, $visibility);
-            })
-            // Rule #5 — drop the whole course once the user is enrolled in
-            // ANY of its cohorts. The per-cohort exclusion inside
-            // `applyAvailableExists` only hides the joined cohort, so a
-            // course with a second joinable cohort would otherwise keep
-            // showing in the Academy list after enrolment.
-            ->whereNotExists(function ($sub) use ($user) {
-                $sub->from('users_courses')
-                    ->whereColumn('users_courses.course_id', 'courses.id')
-                    ->where('users_courses.user_id', $user->id);
             });
+
+        // Guest (unauthenticated) catalogue: only truly public courses — those
+        // with NO qualification skills assigned. A course tied to any
+        // qualification is role-specific and belongs to a logged-in learner's
+        // Special/General split, so it must never surface to a guest. There
+        // are no enrolments to exclude for a guest.
+        if ($user === null) {
+            return $query->whereNotExists(function ($sub) {
+                $sub->from('course_qualification_skills')
+                    ->whereColumn('course_qualification_skills.course_id', 'courses.id');
+            });
+        }
+
+        // Rule #5 — drop the whole course once the user is enrolled in
+        // ANY of its cohorts. The per-cohort exclusion inside
+        // `applyAvailableExists` only hides the joined cohort, so a
+        // course with a second joinable cohort would otherwise keep
+        // showing in the Academy list after enrolment.
+        return $query->whereNotExists(function ($sub) use ($user) {
+            $sub->from('users_courses')
+                ->whereColumn('users_courses.course_id', 'courses.id')
+                ->where('users_courses.user_id', $user->id);
+        });
     }
 
     /**
@@ -609,7 +622,7 @@ final class AcademyRepository implements AcademyRepositoryInterface
      * @param  Builder|QueryBuilder  $q
      * @return Builder|QueryBuilder
      */
-    private function applyAvailableExists(Builder|QueryBuilder $q, User $user, string $today, int $offset, int $visibility): Builder|QueryBuilder
+    private function applyAvailableExists(Builder|QueryBuilder $q, ?User $user, string $today, int $offset, int $visibility): Builder|QueryBuilder
     {
         return $q->whereExists(function ($sub) use ($user, $today, $offset, $visibility) {
             $sub->from('course_sections')
@@ -647,12 +660,17 @@ final class AcademyRepository implements AcademyRepositoryInterface
                        ->orWhereRaw(
                            '(SELECT COUNT(*) FROM users_courses uc WHERE uc.group_id = course_sections.id) < course_sections.capacity',
                        );
-                })
-                ->whereNotExists(function ($q2) use ($user) {
+                });
+
+            // A guest has no enrolments to exclude; the per-cohort
+            // "already joined" filter only applies to an authenticated user.
+            if ($user !== null) {
+                $sub->whereNotExists(function ($q2) use ($user) {
                     $q2->from('users_courses')
                        ->whereColumn('users_courses.group_id', 'course_sections.id')
                        ->where('users_courses.user_id', $user->id);
                 });
+            }
         });
     }
 
