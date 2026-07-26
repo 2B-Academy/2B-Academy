@@ -82,8 +82,9 @@ class AdminUserService
             // `learner`) — which matches `role_key` 1:1 — or any custom
             // role machine name from the `roles` table; the latter is
             // matched against the Spatie `model_has_roles` pivot.
-            if (in_array($role, self::BUCKETED_ROLES, true)) {
-                $query->where('p.role_key', $role);
+            $bucket = $this->bucketForRole($role);
+            if ($bucket !== null) {
+                $query->where('p.role_key', $bucket);
             } else {
                 $customIds = $this->idsForCustomRole($role);
                 if ($customIds === []) {
@@ -251,6 +252,28 @@ class AdminUserService
     }
 
     /**
+     * Map an incoming role identifier to its bucketed system role,
+     * tolerant of the casing/spacing used by the `roles` table (e.g.
+     * "Instructor", "Learner", "Super Admin"). Returns null for
+     * non-bucketed / custom roles (e.g. "Reports Viewer"), which are
+     * resolved via the Spatie `model_has_roles` pivot instead.
+     *
+     * This is the fix for the "Instructor filter shows 3 of 27" bug: the
+     * UI sends the `roles` table's machine name ("Instructor"), but the
+     * person-table buckets are lower-case, so an exact match wrongly
+     * routed the filter down the custom-role (pivot) path.
+     */
+    private function bucketForRole(?string $role): ?string
+    {
+        return match (strtolower(trim((string) $role))) {
+            'admin'      => 'admin',
+            'instructor' => 'instructor',
+            'learner'    => 'learner',
+            default      => null,
+        };
+    }
+
+    /**
      * Translate a `roles` row into a user-facing label, honouring the
      * current Accept-Language locale.
      */
@@ -272,8 +295,9 @@ class AdminUserService
      */
     private function countUsersInRole(string $roleKey): int
     {
-        if (in_array($roleKey, self::BUCKETED_ROLES, true)) {
-            return (int) DB::table($this->tableFor($this->sourceForRole($roleKey)))->count();
+        $bucket = $this->bucketForRole($roleKey);
+        if ($bucket !== null) {
+            return (int) DB::table($this->tableFor($this->sourceForRole($bucket)))->count();
         }
 
         return (int) DB::table('model_has_roles as mhr')

@@ -130,10 +130,23 @@ final class MyLearningRepository implements MyLearningRepositoryInterface
     {
         $rows = DB::table('course_sessions')
             ->leftJoin('attendances', function ($join) use ($user, $courseId, $cohortId) {
-                $join->on('attendances.session_id', '=', 'course_sessions.id')
-                     ->where('attendances.user_id', '=', $user->id)
+                $join->where('attendances.user_id', '=', $user->id)
                      ->where('attendances.course_id', '=', $courseId)
-                     ->where('attendances.section_id', '=', $cohortId);
+                     ->where('attendances.section_id', '=', $cohortId)
+                     // Match on the explicit session_id when present; else
+                     // fall back to a date match for legacy rows that predate
+                     // the attendances.session_id column. This is the same
+                     // rule the admin cohort drawer applies
+                     // (see CohortAttendanceService) — without it every
+                     // legacy row (session_id NULL) fails the join and each
+                     // session wrongly resolves to Absent.
+                     ->where(function ($c) {
+                         $c->whereRaw('attendances.session_id = course_sessions.id')
+                           ->orWhere(function ($d) {
+                               $d->whereNull('attendances.session_id')
+                                 ->whereRaw('DATE(attendances.created_at) = course_sessions.session_date');
+                           });
+                     });
             })
             ->where('course_sessions.course_id', $courseId)
             ->where('course_sessions.section_id', $cohortId)

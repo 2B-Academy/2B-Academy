@@ -11,6 +11,7 @@ use App\Services\CertificateProjectionService;
 use App\Services\LectureProgressService;
 use App\Services\UserDashboardService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Composite payload backing the Angular "My Learnings" dashboard: per-course
@@ -55,7 +56,18 @@ class LearnerDashboardService
         $progressByCourse = $this->progress->getCourseProgressBatch($user->id, $courseIds);
         $certificateStatusByCourse = $this->certificates->projectForCourses($user, $courses);
 
-        return $courses->map(function (Course $course) use ($request, $cohortIdsByCourse, $cohorts, $progressByCourse, $certificateStatusByCourse) {
+        // Batch-resolve the active certificate id per course (one query, no
+        // N+1) so the card can render a "Download Certificate" action instead
+        // of "Continue Learning" once the course is done.
+        $certificateIdByCourse = DB::table('user_certificates')
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->whereIn('course_id', $courseIds)
+            ->get(['id', 'course_id'])
+            ->mapWithKeys(fn ($r) => [(int) $r->course_id => (int) $r->id])
+            ->all();
+
+        return $courses->map(function (Course $course) use ($request, $cohortIdsByCourse, $cohorts, $progressByCourse, $certificateStatusByCourse, $certificateIdByCourse) {
             $cohortId = $cohortIdsByCourse->get($course->id);
             /** @var CourseSection|null $cohort */
             $cohort = $cohortId ? $cohorts->get($cohortId) : null;
@@ -68,8 +80,13 @@ class LearnerDashboardService
                 'start_date' => $cohort?->start_date?->format('Y-m-d'),
                 'end_date' => $cohort?->end_date?->format('Y-m-d'),
             ];
-            $card['module_progress_percent'] = $progressByCourse[$course->id] ?? 0;
+            $percent = (int) ($progressByCourse[$course->id] ?? 0);
+            $card['module_progress_percent'] = $percent;
             $card['certificate_status'] = $certificateStatusByCourse[$course->id] ?? null;
+            // Explicit completion + downloadable certificate id so the
+            // frontend can swap "Continue Learning" for certificate actions.
+            $card['certificate_id'] = $certificateIdByCourse[$course->id] ?? null;
+            $card['completed'] = $percent >= 100 || $card['certificate_id'] !== null;
 
             return $card;
         })->values()->all();

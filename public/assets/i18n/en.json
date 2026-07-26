@@ -362,8 +362,10 @@
         "blocked": "Certificate: Blocked"
       },
       "actions": {
-        "continue": "Continue Learning"
+        "continue": "Continue Learning",
+        "download_certificate": "Download Certificate"
       },
+      "download_failed": "Couldn't download the certificate. Please try again.",
       "empty": {
         "title": "No active courses yet",
         "message": "Enrol in a course from the catalogue to start learning."
@@ -392,6 +394,7 @@
         "no_cohort": "No cohort scheduled",
         "cohort_scheduled": "Cohort open for enrolment",
         "download_certificate": "Download certificate",
+        "download_failed": "Couldn't download the certificate. Please try again.",
         "notify_me": "Notify me when the next cohort opens",
         "empty": {
           "title": "No qualifications assigned",
@@ -446,6 +449,10 @@
       "back": "My Learnings",
       "modules_completed": "{{completed}} of {{total}} modules completed",
       "curriculum": "Course Curriculum",
+      "empty": {
+        "title": "No content yet",
+        "message": "This course doesn't have any curriculum content yet. Please check back later."
+      },
       "nav": {
         "previous": "Previous",
         "next": "Next"

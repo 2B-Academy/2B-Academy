@@ -39,23 +39,17 @@ class AdminAssignmentService
                 $inner->where('title', 'like', "%{$search}%")
                       ->orWhere('title_ar', 'like', "%{$search}%");
             }))
-            ->whereExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('course_assignment_questions')
-                    ->whereColumn('course_assignment_questions.course_assignment_id', 'course_assignments.id');
-            })
+            // NB: no `course_assignment_questions` existence gate. Legacy
+            // assignments are file-based (a `file` upload, zero question
+            // rows); requiring a question row hid every existing assignment
+            // from the admin dashboard.
             ->orderByDesc('id')
             ->paginate($perPage);
     }
 
     public function summary(): array
     {
-        $assignments = CourseAssignment::query()
-            ->whereExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('course_assignment_questions')
-                    ->whereColumn('course_assignment_questions.course_assignment_id', 'course_assignments.id');
-            });
+        $assignments = CourseAssignment::query();
 
         return [
             'assignments_count' => (clone $assignments)->count(),
@@ -68,11 +62,6 @@ class AdminAssignmentService
         return CourseAssignment::query()
             ->select(['id', 'title', 'title_ar', 'course_id', 'status'])
             ->with('course:id,title')
-            ->whereExists(function ($sub) {
-                $sub->select(DB::raw(1))
-                    ->from('course_assignment_questions')
-                    ->whereColumn('course_assignment_questions.course_assignment_id', 'course_assignments.id');
-            })
             ->when($search, fn ($q) => $q->where(function ($inner) use ($search) {
                 $inner->where('title', 'like', "%{$search}%")
                       ->orWhere('title_ar', 'like', "%{$search}%");
@@ -181,13 +170,6 @@ class AdminAssignmentService
                 'assignment.creator:id,name',
                 'assignment.cohorts.session:id,title',
             ])
-            ->whereHas('assignment', function ($q) {
-                $q->whereExists(function ($sub) {
-                    $sub->select(DB::raw(1))
-                        ->from('course_assignment_questions')
-                        ->whereColumn('course_assignment_questions.course_assignment_id', 'course_assignments.id');
-                });
-            })
             ->when($assignmentId, fn ($q) => $q->where('course_assignment_id', $assignmentId))
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->when($courseId, fn ($q) => $q->whereHas('assignment', fn ($inner) => $inner->where('course_id', $courseId)))

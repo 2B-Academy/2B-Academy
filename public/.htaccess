@@ -3,21 +3,31 @@
         Options -MultiViews -Indexes
     </IfModule>
 
+    # The Angular SPA (copied from the website/ build) is the entry point.
+    # Was index.php when this served the Blade front-end.
+    DirectoryIndex index.html
+
     RewriteEngine On
 
-    # Handle Authorization Header
+    # Handle Authorization Header (Sanctum Bearer tokens)
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    # --- Laravel backend stays server-side ---
+    # API always goes to the front controller
+    RewriteRule ^api(/.*)?$ index.php [L]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # Uploaded files: served directly when the storage symlink exists;
+    # otherwise Laravel's /storage fallback route streams them.
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^storage(/.*)?$ index.php [L]
+
+    # --- Everything else: real files serve directly, all other paths
+    #     fall through to the Angular SPA entry point ---
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
 </IfModule>
 <IfModule mod_php8.c>
     php_value upload_max_filesize 2048M

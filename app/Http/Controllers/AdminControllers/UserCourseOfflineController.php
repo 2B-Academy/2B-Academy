@@ -88,7 +88,7 @@ class UserCourseOfflineController extends Controller
         $course->users()->syncWithoutDetaching($data);
 
         //Send notifications
-        if (env('APP_ENV') == 'production')
+        if (app()->environment('production'))
         {
             $service = new NotificationsApiService();
             if ($request->hasFile('users_sheet'))

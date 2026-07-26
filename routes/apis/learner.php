@@ -74,6 +74,6 @@ Route::middleware(['auth.user', 'role:User'])
             ->whereNumber('course');
         Route::post('courses/{course}/rating',  [MyLearningController::class, 'submitRating'])
             ->whereNumber('course');
-        Route::get('certificates/{certificate}/download', [CertificateController::class, 'download'])
+        Route::get('certificates/{certificate}/download', [CertificateController::class, 'downloadFile'])
             ->whereNumber('certificate');
     });

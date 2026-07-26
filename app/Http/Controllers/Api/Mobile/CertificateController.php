@@ -96,4 +96,35 @@ class CertificateController extends MobileBaseController
             ],
         );
     }
+
+    /**
+     * Web download — streams the certificate as a real binary JPEG
+     * attachment (Content-Disposition), so a browser saves a file.
+     *
+     * The mobile `download` endpoint above returns a base64 JSON envelope
+     * for in-app decoding; the browser Profile screen instead fetches this
+     * route with an authenticated HttpClient blob request. Keeping them as
+     * separate actions avoids breaking the mobile contract.
+     */
+    public function downloadFile(Request $request, int $certificateId): \Symfony\Component\HttpFoundation\Response
+    {
+        $user        = $request->user();
+        $certificate = $this->certificates->findById($user, $certificateId, app()->getLocale());
+        if ($certificate === null) {
+            return $this->notFound(__('messages.mobile.certificate_not_found'));
+        }
+
+        $binary = base64_decode($this->generateCertificate(
+            $certificate->localizedCourseTitle(app()->getLocale()),
+            $user->name,
+        ), true) ?: '';
+
+        $filename = 'certificate-' . ($certificate->certificate_number ?: $certificate->id) . '.jpg';
+
+        return response($binary, 200, [
+            'Content-Type'        => 'image/jpeg',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length'      => (string) strlen($binary),
+        ]);
+    }
 }

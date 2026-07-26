@@ -25,6 +25,14 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
+    // Read via config() at runtime so these keep working after
+    // `php artisan config:cache` (env() returns null once config is cached).
+    'api_protect_key' => env('API_PROTECT_KEY'),
+
+    'recaptcha' => [
+        'secret' => env('GOOGLE_RECAPTCHA_SECRET_KEY'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

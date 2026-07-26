@@ -25,12 +25,15 @@ class ReCaptcha implements Rule
      */
     public function passes($attribute, $value)
     {
-        $response = Http::get("https://www.google.com/recaptcha/api/siteverify",[
-            'secret' => env('GOOGLE_RECAPTCHA_SECRET_KEY'),
-            'response' => $value
+        // config() (not env()) so the secret survives `config:cache`;
+        // otherwise it resolves to null in production and every captcha
+        // verification fails, making the guarded form unsubmittable.
+        $response = Http::get("https://www.google.com/recaptcha/api/siteverify", [
+            'secret'   => config('services.recaptcha.secret'),
+            'response' => $value,
         ]);
 
-        return $response->json()["success"];
+        return (bool) ($response->json()['success'] ?? false);
     }
     /**
      * Get the validation error message.

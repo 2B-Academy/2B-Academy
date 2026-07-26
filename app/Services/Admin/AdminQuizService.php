@@ -37,8 +37,11 @@ class AdminQuizService
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
                     ->from('course_exam_questions')
-                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id')
-                    ->whereNotNull('course_exam_questions.question_en');
+                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id');
+                    // NB: intentionally NOT restricted to rich (`question_en`)
+                    // questions. Legacy exams store the prompt in `question`
+                    // only; requiring `question_en` hid every existing quiz
+                    // from the admin dashboard (all live data is legacy).
             })
             ->when($courseId, fn ($q) => $q->where('course_id', $courseId))
             ->when($status, fn ($q) => $q->where('status', $status))
@@ -56,8 +59,11 @@ class AdminQuizService
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
                     ->from('course_exam_questions')
-                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id')
-                    ->whereNotNull('course_exam_questions.question_en');
+                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id');
+                    // NB: intentionally NOT restricted to rich (`question_en`)
+                    // questions. Legacy exams store the prompt in `question`
+                    // only; requiring `question_en` hid every existing quiz
+                    // from the admin dashboard (all live data is legacy).
             });
 
         return [
@@ -74,8 +80,11 @@ class AdminQuizService
             ->whereExists(function ($sub) {
                 $sub->select(DB::raw(1))
                     ->from('course_exam_questions')
-                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id')
-                    ->whereNotNull('course_exam_questions.question_en');
+                    ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id');
+                    // NB: intentionally NOT restricted to rich (`question_en`)
+                    // questions. Legacy exams store the prompt in `question`
+                    // only; requiring `question_en` hid every existing quiz
+                    // from the admin dashboard (all live data is legacy).
             })
             ->when($search, fn ($q) => $q->where(function ($inner) use ($search) {
                 $inner->where('title', 'like', "%{$search}%")
@@ -195,11 +204,13 @@ class AdminQuizService
                 'exam.cohorts.session:id,title',
             ])
             ->whereHas('exam', function ($q) {
+                // Any exam that has questions (legacy or rich) — mirrors the
+                // relaxed quiz list gate so a legacy quiz's submissions are
+                // not hidden from the admin.
                 $q->whereExists(function ($sub) {
                     $sub->select(DB::raw(1))
                         ->from('course_exam_questions')
-                        ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id')
-                        ->whereNotNull('course_exam_questions.question_en');
+                        ->whereColumn('course_exam_questions.course_exam_id', 'course_exams.id');
                 });
             })
             ->when($quizId, fn ($q) => $q->where('exam_id', $quizId))

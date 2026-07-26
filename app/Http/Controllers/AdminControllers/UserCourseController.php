@@ -79,7 +79,7 @@ class UserCourseController extends Controller
         }
 
         //Send notifications
-        if (env('APP_ENV') == 'production')
+        if (app()->environment('production'))
         {
             $service = new NotificationsApiService();
             if ($course->for_public)
