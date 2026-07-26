@@ -171,7 +171,8 @@
       "Bash(grep -c \"INSERT INTO \\\\`course_lectures\\\\`\" live.sql)",
       "Bash(grep -A2 \"INSERT INTO \\\\`course_assignments\\\\`\" live.sql)",
       "Bash(awk '/INSERT INTO `course_assignments`/{f=1} f&&/\\\\\\),\\\\\\(/{n+=gsub\\(/\\\\\\),\\\\\\(/,\"&\"\\)} f&&/;$/{print \"rows approx:\", n+1; f=0}' live.sql)",
-      "Bash(grep -v \"//\")"
+      "Bash(grep -v \"//\")",
+      "Bash(php -l /f/2b-academy-test/app/Services/Admin/AdminUserService.php)"
     ]
   }
 }

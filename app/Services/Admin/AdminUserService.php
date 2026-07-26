@@ -819,16 +819,21 @@ class AdminUserService
             ->selectRaw('"instructor" AS source')
             ->selectRaw('id')
             // Stored as JSON {"en":"…","ar":"…"} via Spatie HasTranslations.
-            ->selectRaw('COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")), "null"), name) AS name_en')
-            ->selectRaw('NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar")), "null") AS name_ar')
+            // JSON_VALID guards against a legacy plain-string name (JSON_EXTRACT
+            // would otherwise throw "Invalid JSON text"). When one locale is
+            // missing, fall back to the OTHER locale — never to the raw `name`
+            // column, which is the JSON blob and would render as literal
+            // `{"ar":"…"}` in the UI.
+            ->selectRaw('CASE WHEN JSON_VALID(name) THEN COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")), "null"), NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar")), "null")) ELSE name END AS name_en')
+            ->selectRaw('CASE WHEN JSON_VALID(name) THEN COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar")), "null"), NULLIF(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")), "null")) ELSE name END AS name_ar')
             ->selectRaw('NULL AS name_fallback')
             ->selectRaw('email AS email')
             ->selectRaw('NULL AS phone')
             ->selectRaw('NULL AS machine_code')
             ->selectRaw('NULL AS department_name')
             // Brief — translatable JSON {"en":"…","ar":"…"} on the bio column.
-            ->selectRaw($instHasBio ? 'NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.en")), "null") AS bio_en' : 'NULL AS bio_en')
-            ->selectRaw($instHasBio ? 'NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.ar")), "null") AS bio_ar' : 'NULL AS bio_ar')
+            ->selectRaw($instHasBio ? 'CASE WHEN JSON_VALID(bio) THEN NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.en")), "null") ELSE bio END AS bio_en' : 'NULL AS bio_en')
+            ->selectRaw($instHasBio ? 'CASE WHEN JSON_VALID(bio) THEN NULLIF(JSON_UNQUOTE(JSON_EXTRACT(bio, "$.ar")), "null") ELSE bio END AS bio_ar' : 'NULL AS bio_ar')
             ->selectRaw($instHasImage ? 'image AS image' : 'NULL AS image')
             ->selectRaw('"instructor" AS role_key')
             ->selectRaw('"Instructor" AS role_label')
