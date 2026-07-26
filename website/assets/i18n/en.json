@@ -1,0 +1,657 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "close": "Close",
+    "search": "Search",
+    "clear_all": "Clear all",
+    "load_more": "Load more",
+    "results": "results",
+    "no_results": "No results found",
+    "error_generic": "Something went wrong. Please try again.",
+    "required": "This field is required.",
+    "coming_soon": "This page is coming soon.",
+    "apply": "Apply"
+  },
+  "shared": {
+    "filter_sidebar": {
+      "title": "Filters"
+    },
+    "login_required": {
+      "title": "Enrolment Failed",
+      "message": "Please sign in first. Once logged in, you can enroll in any course and explore what fits you best.",
+      "cancel": "Cancel",
+      "login": "Login to my account"
+    }
+  },
+  "core": {
+    "nav": {
+      "catalogue": "Catalogue",
+      "my_learnings": "My Learnings",
+      "who_we_are": "Who we are",
+      "blogs": "Blogs",
+      "login": "Login",
+      "request_demo": "Request a Demo",
+      "notifications": "Notifications",
+      "language": "Language",
+      "home": "Home",
+      "home_page": "Home Page",
+      "menu": "Menu",
+      "menu_back": "Back",
+      "more_options": "More Options",
+      "languages": "Languages"
+    },
+    "language": {
+      "en": "English",
+      "ar": "العربية"
+    },
+    "profile_menu": {
+      "profile": "Profile",
+      "settings": "Settings",
+      "logout": "Logout"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "mark_all_read": "Mark all as read",
+      "view_all": "View all notifications",
+      "empty": {
+        "title": "You're all caught up",
+        "message": "New activity on your courses will show up here."
+      }
+    },
+    "footer": {
+      "nav": {
+        "catalogue": "Catalogue",
+        "who_we_are": "Who we are",
+        "contact_us": "Contact Us"
+      },
+      "newsletter": {
+        "title": "Get the freshest courses from us",
+        "email_label": "Email address",
+        "email_ph": "Your email address..",
+        "subscribe": "Subscribe",
+        "success": "Thanks for subscribing — look out for our next update."
+      },
+      "legal": {
+        "terms": "Terms & Conditions",
+        "privacy": "Privacy Policy"
+      },
+      "copyright": "© NAS {{year}}. All rights reserved."
+    }
+  },
+  "feature": {
+    "auth": {
+      "login": {
+        "title": "Welcome back",
+        "subtitle": "Sign in to your LMS account to continue.",
+        "email_label": "Email address",
+        "email_ph": "Email address",
+        "password_label": "Password",
+        "password_ph": "Password",
+        "submit": "Sign In",
+        "helper": "Having trouble? Contact your system administrator.",
+        "show_password": "Show password",
+        "hide_password": "Hide password",
+        "brand_title": "Track your skills progress",
+        "brand_subtitle": "NAS Learning Management System",
+        "invalid_credentials": "The email or password you entered is incorrect.",
+        "email_invalid": "Enter a valid email address."
+      }
+    },
+    "blogs": {
+      "title": "Your Daily Expansion",
+      "search_ph": "Search blogs…",
+      "scope": {
+        "tailored": "Tailored for Me",
+        "all": "Explore All"
+      },
+      "latest_in_role": "Latest in your role",
+      "min_read": "min read",
+      "filters": {
+        "topic": "Topic",
+        "job_role": "Job Role",
+        "level": "Level"
+      },
+      "level": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "professional": "Professional"
+      },
+      "empty": {
+        "title": "No blogs yet",
+        "message": "Check back soon — new articles are on the way."
+      },
+      "back_to_blogs": "Back to Blogs",
+      "about_author": "About the author",
+      "related": "Related articles",
+      "copy_link": "Copy link",
+      "link_copied": "Link copied to clipboard"
+    },
+    "who_we_are": {
+      "hero": {
+        "overline": "Who we are",
+        "title": "Learning, mapped to the role you actually hold",
+        "body_1": "NAS Smart LMS connects every job title to the qualifications it requires — and every qualification to the courses that earn it.",
+        "body_2": " It's how employees know exactly what to learn next, and how HR teams know who's ready for what."
+      },
+      "journey": {
+        "kicker": "( Our Journey )",
+        "title": "How we work, and where it is leading",
+        "principle": "Principle",
+        "nodes": {
+          "begin": {
+            "label": "Principle",
+            "label_mobile": "Today",
+            "title": "The journey begins",
+            "desc": "We connect job titles, qualifications, and courses into one system, so learning is never disconnected from the role someone actually holds today."
+          },
+          "real": {
+            "title": "We track what is real",
+            "desc": "Progress reflects actual completion, attendance, and scores - never estimates."
+          },
+          "language": {
+            "title": "Language is not an afterthought",
+            "desc": "Arabic and English are built side by side, from day one."
+          },
+          "record": {
+            "title": "One record, not three",
+            "desc": "Learning is one continuous story across app, website, and dashboard."
+          },
+          "earned": {
+            "title": "Nothing is issued unearned",
+            "desc": "Certificates and progress only appear when the work behind them is actually done."
+          },
+          "headed": {
+            "label": "Where We Are Headed",
+            "title": "Scaling across NAS",
+            "desc": "A NAS where every qualification is already mapped, and every course moves employees visibly closer to it."
+          }
+        }
+      },
+      "advantages": {
+        "title": "What that actually gets you",
+        "certificates": {
+          "title": "Verifiable certificates",
+          "desc": "Auto-generated from real completion, attendance, and score logic."
+        },
+        "bilingual": {
+          "title": "Bilingual by design",
+          "desc": "Arabic and RTL are first-class from day one, not a translation layer."
+        },
+        "connected": {
+          "title": "One connected system",
+          "desc": "Dashboard, website, and app share data in real time."
+        },
+        "personalization": {
+          "title": "Personalization engine",
+          "desc": "Courses map automatically to job titles and qualifications."
+        }
+      },
+      "cta": {
+        "kicker": "Get started",
+        "title": "Let's write the next chapter together.",
+        "subtitle": "See how NAS Smart LMS brings job titles, qualifications, and courses together in one system.",
+        "subtitle_mobile": "Brings job titles, qualifications, and courses together in one system.",
+        "button": "Book a demo"
+      }
+    },
+    "contact": {
+      "hero_title": "Smarter Learning Starts Here",
+      "hero_subtitle": "Book a short call to see how NAS LMS connects your team's roles to the right qualifications and courses - automatically.",
+      "card_title": "NAS LMS Product Tour",
+      "name": "Name",
+      "name_ph": "Full Name",
+      "email": "Email",
+      "email_ph": "Work Email",
+      "guests": "Guests",
+      "add_guests": "Add guests",
+      "remove_guest": "Remove guest",
+      "phone": "Phone Number",
+      "phone_ph": "Your phone number",
+      "job_title": "Job Title",
+      "job_title_ph": "e.g. L&D Manager",
+      "company": "Company Name",
+      "company_ph": "Your company",
+      "submit": "Schedule Meeting",
+      "quick_contact": "For quick contact",
+      "errors": {
+        "required": "This field is required.",
+        "email": "Enter a valid email address."
+      },
+      "success": {
+        "title": "Your request has been sent!",
+        "subtitle": "An invitation will be sent to your email address shortly.",
+        "duration": "30 min",
+        "description_label": "Description",
+        "description": "Book a short call to see how NAS LMS empowers your team and boosts engagement.",
+        "meeting_label": "Meeting details",
+        "meeting_value": "Google Meet"
+      }
+    },
+    "catalogue": {
+      "title": "Explore The Catalogue",
+      "search_ph": "Search courses, qualifications, categories…",
+      "results": "results",
+      "actions": {
+        "enrol": "Enrol Now",
+        "notify_me": "Enrolment Closed — Notify me for next cohort",
+        "enrolled": "Enrolled ✓",
+        "unavailable": "Not currently available"
+      },
+      "delivery": {
+        "online": "Online",
+        "offline": "Offline",
+        "hybrid": "Hybrid",
+        "external_link": "External"
+      },
+      "level": {
+        "beginner": "Beginner",
+        "intermediate": "Intermediate",
+        "professional": "Professional"
+      },
+      "card": {
+        "starts": "Starts"
+      },
+      "empty": {
+        "title": "No courses found",
+        "message": "Try adjusting your search or filters to find more courses."
+      },
+      "enrol": {
+        "success": "You're enrolled — find it in My Learnings.",
+        "success_title": "Enrolled Successfully",
+        "error_title": "Something Went Wrong!",
+        "dialog": {
+          "title": "Request Enrolment",
+          "cohort_starting": "Cohort starting {{date}}",
+          "note": "You'll be enrolled immediately. This course will appear in Profile \"My Learning\" section.",
+          "cancel": "Cancel Request",
+          "confirm": "Confirm Request",
+          "close": "Close"
+        }
+      },
+      "notify": {
+        "success": "We'll notify you when the next cohort opens."
+      },
+      "filters": {
+        "type": "Type",
+        "level": "Level",
+        "duration": "Duration",
+        "job_role": "Job Role",
+        "sort_by": "Sort by",
+        "duration_options": {
+          "1_2_weeks": "1-2 Weeks",
+          "2_4_weeks": "2-4 Weeks",
+          "4_8_weeks": "4-8 Weeks",
+          "8_plus_weeks": "+8 Weeks"
+        },
+        "sort_options": {
+          "most_relevant": "Most Relevant",
+          "highest_rated": "Highest Rated",
+          "soonest_start": "Soonest Start",
+          "newest": "Newest"
+        }
+      }
+    },
+    "course_detail": {
+      "title": "Course Details",
+      "tabs": {
+        "overview": "Overview",
+        "curriculum": "Curriculum",
+        "instructor": "Instructor"
+      },
+      "overview": {
+        "what_you_will_learn": "What you'll learn",
+        "requirements": "Requirements",
+        "qualifications_earned": "Qualifications earned"
+      },
+      "curriculum": {
+        "locked_note": "Full module content is visible after enrolment. Module names and session counts shown below.",
+        "modules_count": "{{count}} modules",
+        "sessions_count": "{{count}} sessions total",
+        "duration_weeks": "{{count}} weeks",
+        "locked": "Locked until enrolment"
+      },
+      "instructor": {
+        "rating": "rating"
+      },
+      "hero": {
+        "enrolled": "enrolled",
+        "earns": "Earns:"
+      },
+      "card": {
+        "starts": "Starts",
+        "ends": "End",
+        "type": "Type",
+        "sessions": "Sessions",
+        "instructor": "Instructor",
+        "includes": "This course includes",
+        "remaining_seats": "{{count}} Remaining Seats"
+      },
+      "includes": {
+        "sessions": "{{count}} live sessions",
+        "reading": "Reading materials & resources",
+        "assessments": "Quizzes & assignments",
+        "certificate": "Certificate upon completion"
+      },
+      "not_found": {
+        "title": "Course not found",
+        "message": "This course may have been removed or is no longer available."
+      }
+    },
+    "my_learnings": {
+      "title": "My Active Courses",
+      "search_ph": "Search your courses…",
+      "upcoming": "Upcoming",
+      "delivery": {
+        "online": "Online",
+        "offline": "Offline",
+        "hybrid": "Blended",
+        "external_link": "External"
+      },
+      "card": {
+        "sessions": "{{count}} sessions",
+        "started": "Started in"
+      },
+      "certificate": {
+        "earned": "Certificate: Earned",
+        "on_track": "Certificate: On track",
+        "at_risk": "Certificate: At Risk",
+        "blocked": "Certificate: Blocked"
+      },
+      "actions": {
+        "continue": "Continue Learning"
+      },
+      "empty": {
+        "title": "No active courses yet",
+        "message": "Enrol in a course from the catalogue to start learning."
+      }
+    },
+    "profile": {
+      "eyebrow": "Learner Profile",
+      "logout": "Log out",
+      "search_ph": "Search courses, qualifications, instructors…",
+      "stats": {
+        "required": "Required",
+        "earned": "Earned",
+        "in_progress": "In Progress",
+        "not_started": "Not Started"
+      },
+      "tabs": {
+        "qualifications": "Qualifications",
+        "my_learnings": "My Learnings",
+        "my_schedule": "My Schedule"
+      },
+      "qualifications": {
+        "earned": "Earned Courses",
+        "uncovered": "Uncovered Courses",
+        "completed_on": "Completed",
+        "also_in": "Also in:",
+        "no_cohort": "No cohort scheduled",
+        "cohort_scheduled": "Cohort open for enrolment",
+        "download_certificate": "Download certificate",
+        "notify_me": "Notify me when the next cohort opens",
+        "empty": {
+          "title": "No qualifications assigned",
+          "message": "Qualifications tied to your role will appear here."
+        }
+      },
+      "learnings": {
+        "tabs": {
+          "upcoming": "Upcoming",
+          "current": "Current",
+          "completed": "Completed"
+        },
+        "starts_in": "Starts in {{count}} days",
+        "view_details": "View Details",
+        "review": "Review",
+        "completed_on": "Completed",
+        "score": "Score: {{score}}%",
+        "not_certified": "Not certified",
+        "enrol_again": "Enrol again",
+        "empty": {
+          "upcoming": "No upcoming courses",
+          "current": "No courses in progress",
+          "completed": "No completed courses yet",
+          "message": "Your enrolled courses will show up here."
+        },
+        "rating": {
+          "question": "How are you finding this course?",
+          "subtitle": "Your rating helps improve future cohorts.",
+          "comment_label": "Add a comment (optional):",
+          "comment_ph": "Your comment...",
+          "submit": "Submit",
+          "thanks": "Thanks for your feedback!",
+          "very_unsatisfied": "Very Unsatisfied",
+          "unsatisfied": "Unsatisfied",
+          "neutral": "Neutral",
+          "satisfied": "Satisfied",
+          "very_satisfied": "Very Satisfied"
+        }
+      },
+      "sidebar": {
+        "active_session": "Active Session",
+        "join_session": "Join session",
+        "live_now": "Live now",
+        "my_attendance": "My Attendance",
+        "present": "Present",
+        "absent": "Absent",
+        "no_sessions": "No sessions scheduled yet.",
+        "at_risk": "Certificate at risk — your attendance is below the required threshold."
+      }
+    },
+    "course_player": {
+      "back": "My Learnings",
+      "modules_completed": "{{completed}} of {{total}} modules completed",
+      "curriculum": "Course Curriculum",
+      "nav": {
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "content_type": {
+        "video": "Video",
+        "document": "Document",
+        "article": "Article",
+        "link": "External Link"
+      },
+      "completion": {
+        "video_question": "Did you complete this video?",
+        "document_question": "Did you read this document?",
+        "article_question": "Did you read this article?",
+        "link_question": "Visit the link, then mark this as complete.",
+        "yes": "Yes",
+        "no": "No",
+        "mark_complete": "Mark as complete",
+        "duration": "Approximate duration: {{count}} mins",
+        "required": "Require completion of this module to continue",
+        "link_visit": "External link won't appear here, please click to navigate to the link",
+        "link_cta": "Visit link"
+      },
+      "quiz": {
+        "title": "Quiz",
+        "assignment_title": "Assignment",
+        "question_of": "Question {{current}} of {{total}}",
+        "score": "Score",
+        "passed": "Passed",
+        "submit": "Submit Answer",
+        "next_question": "Next Question",
+        "finish": "Finish",
+        "char_count": "{{count}} / {{max}}",
+        "answer_ph": "Type your answer here...",
+        "correct_order": "Correct order",
+        "your_order": "Your order",
+        "true": "True",
+        "false": "False"
+      },
+      "results": {
+        "title": "Review Results",
+        "final_score": "Final Score",
+        "out_of": "out of {{total}} points",
+        "question_review": "Question Review",
+        "total_questions": "{{count}} Total",
+        "selected_answer": "Selected Answer:",
+        "model_answer": "Model Answer:",
+        "points_earned": "{{count}} pts",
+        "pending": "Pending",
+        "earned_label": "Earned"
+      }
+    },
+    "landing": {
+      "hero": {
+        "title_l1": "Learn anything and",
+        "title_l2": "master your role",
+        "title_m_l1": "Learn anything",
+        "title_m_l2_plain": "and ",
+        "title_m_l2_em": "master your role",
+        "subtitle": "Not a catalogue. A map. Built from your job title, pointing straight to the competences and courses that get you where you're going.",
+        "cta": "Request a Demo Now"
+      },
+      "quote": {
+        "items": [
+          {
+            "text_pre": "An investment in knowledge pays the ",
+            "text_em": "best interest",
+            "text_post": ".",
+            "author": "Benjamin Franklin"
+          },
+          {
+            "text_pre": "The growth and development of people is the highest ",
+            "text_em": "calling of leadership",
+            "text_post": ".",
+            "author": "Harvey S. Firestone"
+          }
+        ],
+        "go_to": "Show quote"
+      },
+      "differ": {
+        "kicker": "How we differ",
+        "title": "One system, two connected views",
+        "subtitle": "A role or qualification set on the admin dashboard flows straight through to the courses each employee sees — automatically."
+      },
+      "video": {
+        "title": "LMS Demo",
+        "subtitle": "Take a sneak peak",
+        "play": "Play",
+        "pause": "Pause",
+        "back_15": "Go backwards 15 seconds",
+        "fwd_15": "Go forward 15 seconds",
+        "step1": "1 — Admin sets the role",
+        "step2": "2 — System maps qualifications",
+        "step3": "3 — Instructor creates course",
+        "step4": "4 — Employee gets the course"
+      },
+      "roles": {
+        "title": "Define roles, build capabilities & grow your team.",
+        "title_mobile": "Define roles, build capabilities & grow your team",
+        "see_for_role": "SEE IT FOR A ROLE",
+        "job_title": "JOB TITLE",
+        "enrol": "Enrol",
+        "course_badge": "COURSE · EARNS QUALIFICATION",
+        "course_badge_short": "COURSE · QUALIFICATION",
+        "sales_executive": {
+          "name": "Sales Executive",
+          "name_short": "Sales Exec",
+          "q1": "Consultative selling",
+          "q2": "CRM proficiency",
+          "c1_title": "Winning enterprise deals",
+          "c1_date": "Next · Tue 14 Jul",
+          "c2_title": "Salesforce for sales teams",
+          "c2_date": "Next · Mon 20 Jul"
+        },
+        "branch_manager": {
+          "name": "Branch Manager",
+          "name_short": "Branch Manager",
+          "q1": "Team leadership",
+          "q2": "Risk and compliance",
+          "c1_title": "Leading high-trust teams",
+          "c1_date": "Next · Wed 16 Jul",
+          "c2_title": "Branch risk essentials",
+          "c2_date": "Next · Thu 24 Jul"
+        },
+        "data_analyst": {
+          "name": "Data Analyst",
+          "name_short": "Data Analyst",
+          "q1": "Data visualization",
+          "q2": "SQL for analysts",
+          "c1_title": "Turning data into decisions",
+          "c1_date": "Next · Wed 15 Jul",
+          "c2_title": "Advanced SQL for analysts",
+          "c2_date": "Next · Fri 18 Jul"
+        },
+        "hr_specialist": {
+          "name": "HR Specialist",
+          "name_short": "HR Specialist",
+          "q1": "Employee relations",
+          "q2": "HR compliance",
+          "c1_title": "Building strong employee relations",
+          "c1_date": "Next · Tue 21 Jul",
+          "c2_title": "HR compliance essentials",
+          "c2_date": "Next · Thu 23 Jul"
+        }
+      },
+      "next": {
+        "title": "Next Step",
+        "title_mobile": "How to get started",
+        "book": {
+          "title": "Book a demo",
+          "desc": "Book a demo with our workforce consultants. We'll set you up a meeting to suit your team's needs.",
+          "desc_mobile": "Book a demo with our consultants to suit your team's specific needs."
+        },
+        "explore": {
+          "title": "Explore the system",
+          "desc": "See the system in action to understand how it can empower your team, unlock employee potential, and elevate performance across the board.",
+          "desc_mobile": "See the platform in action to understand how it can empower your team and elevate performance."
+        },
+        "onboarding": {
+          "title": "Dedicated onboarding",
+          "desc": "Get a fully tailored, ready-to-use system. A dedicated consultant will handle all your data entry and configuration for you.",
+          "desc_mobile": "Get a fully tailored, ready-to-use setup with consultant guidance."
+        }
+      },
+      "testimonials": {
+        "kicker": "Testimonials",
+        "title_l1": "Proven By",
+        "title_l2": "Actual Users",
+        "title_mobile": "Proven By Actual Users",
+        "q1": "“We stopped hand-assigning courses. Set the role once, and every employee sees exactly the path their qualifications require.”",
+        "q2": "“The perfect blend of theory and practice”",
+        "q3": "“The perfect blend of theory and practice—I finally feel confident in my new skillset”",
+        "q4": "“This course was a total game-changer, breaking down complex topics into actionable steps that helped me succeed immediately”",
+        "q5": "“I walked away with practical, real-world skills that I started applying to my work the very next day”",
+        "manager_name": "Manager name",
+        "employee_name": "Employee’s name",
+        "job_title": "Job Title",
+        "marcus": "Marcus Aurelius",
+        "ops_manager": "Operations Manager",
+        "emily": "Emily Lam",
+        "tech_lead": "Technical Lead",
+        "initials_ma": "MA",
+        "initials_el": "EL"
+      },
+      "faq": {
+        "kicker": "We’re here to help",
+        "title": "Frequently Asked Questions",
+        "q1": "What should I expect during my demo call?",
+        "a1": "During your demo call, our team will walk you through the key features of NAS LMS, tailored to your organization's needs. We'll answer any questions you have and discuss how NAS LMS can help you achieve your HR goals.",
+        "a1_mobile": "During your demo call, our team will walk you through the key features of NAS LMS, tailored to your organization's needs. We'll answer any questions you have and discuss how NAS LMS can help.",
+        "q2": "What integrations do you offer?",
+        "q3": "Does the contract include dedicated human support?",
+        "q3_mobile": "Does the contract include human support?",
+        "q4": "Can I purchase Performance or OKRs and Goals separately?",
+        "q5": "Is there a minimum spend?",
+        "q6": "In what currency will I be billed?",
+        "q7": "Is the contract billed monthly, quarterly, or annually?",
+        "q8": "Are there additional fees for implementation or change management?",
+        "contact_q": "Have a question we didn't answer?",
+        "contact_cta": "Contact Us"
+      },
+      "cta": {
+        "kicker": "Get started",
+        "title": "Go beyond generic catalogues. Get NAS LMS.",
+        "button": "Book a Demo"
+      }
+    }
+  }
+}

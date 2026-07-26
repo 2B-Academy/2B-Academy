@@ -1,0 +1,19 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Final_Glow" filter="url(#filter0_d_0_839)">
+<rect x="12" y="12" width="24" height="24" rx="12" fill="var(--fill-0, #75DEFF)" shape-rendering="crispEdges"/>
+<rect x="12.5" y="12.5" width="23" height="23" rx="11.5" stroke="var(--stroke-0, white)" shape-rendering="crispEdges"/>
+<circle id="Ellipse" cx="24" cy="24" r="3" fill="var(--fill-0, #339699)" stroke="var(--stroke-0, white)" stroke-width="2"/>
+</g>
+<defs>
+<filter id="filter0_d_0_839" x="0" y="0" width="48" height="48" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="6"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.458824 0 0 0 0 0.870588 0 0 0 0 1 0 0 0 0.4 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_839"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_839" result="shape"/>
+</filter>
+</defs>
+</svg>

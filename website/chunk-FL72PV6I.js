@@ -1,0 +1,1 @@
+import{n as a}from"./chunk-BQEZSGPR.js";import{W as t,Zb as o}from"./chunk-COHTZYSF.js";function g(c){let e=t(a),r=e.current();o(()=>{let n=e.current();n!==r&&(r=n,c())},{allowSignalWrites:!0})}export{g as a};

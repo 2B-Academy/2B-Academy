@@ -1,0 +1,1 @@
+import"./chunk-YEWEO3AL.js";var t=[{path:"",loadComponent:()=>import("./chunk-4NUPI34D.js").then(o=>o.BlogListingPageComponent),title:"core.nav.blogs"},{path:":slug",loadComponent:()=>import("./chunk-RBXJ4LN3.js").then(o=>o.BlogDetailPageComponent),title:"core.nav.blogs"}];export{t as BLOGS_ROUTES};

@@ -10,7 +10,7 @@ class NotificationsApiService
     public function __construct()
     {
         $this->client = new Client();
-        $this->hr_base_url = env('HR_BASE_URL');
+        $this->hr_base_url = config('hr.base_url');
     }
 
     /************************ Main Integration *************************/
@@ -61,8 +61,8 @@ class NotificationsApiService
     /************************ Send Notifications to selected users *************************/
     public function sendNotificationsToSelectedUsers($title , $body , $titleEng, $bodyEng , $users)
     {
-        $email = env('HR_ADMIN_EMAIL');
-        $password = env('HR_ADMIN_PASSWORD');
+        $email = config('hr.admin_email');
+        $password = config('hr.admin_password');
         $token = $this->getAccessToken($email, $password);
         if (!$token) {
             return $this->errorResponse('التوكن غير صحيح');
@@ -82,8 +82,8 @@ class NotificationsApiService
     /************************ Send Notifications to all users *************************/
     public function sendNotificationsToAllUsers($title , $body , $titleEng, $bodyEng)
     {
-        $email = env('HR_ADMIN_EMAIL');
-        $password = env('HR_ADMIN_PASSWORD');
+        $email = config('hr.admin_email');
+        $password = config('hr.admin_password');
         $token = $this->getAccessToken($email, $password);
         if (!$token) {
             return $this->errorResponse('التوكن غير صحيح');

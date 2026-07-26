@@ -11,8 +11,8 @@ class HRSystemService
     public function __construct()
     {
         $this->client = new Client();
-        $this->hr_base_url = env('HR_BASE_URL');
-        $this->verify_ssl  = filter_var(env('HR_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN);
+        $this->hr_base_url = config('hr.base_url');
+        $this->verify_ssl  = filter_var(config('hr.verify_ssl', true), FILTER_VALIDATE_BOOLEAN);
     }
 
     /************************ Main Integration *************************/
@@ -99,8 +99,8 @@ class HRSystemService
      */
     public function getAllEmployees(string $culture = 'ar')
     {
-        $email = env('HR_ADMIN_EMAIL');
-        $password = env('HR_ADMIN_PASSWORD');
+        $email = config('hr.admin_email');
+        $password = config('hr.admin_password');
         $token = $this->getAccessToken($email, $password);
         if (!$token) {
             return $this->errorResponse('التوكن غير صحيح');
@@ -130,7 +130,7 @@ class HRSystemService
      */
     public function getAllJobs(string $culture = 'ar')
     {
-        $token = $this->getAccessToken(env('HR_ADMIN_EMAIL'), env('HR_ADMIN_PASSWORD'));
+        $token = $this->getAccessToken(config('hr.admin_email'), config('hr.admin_password'));
         if (! $token) {
             return collect();
         }

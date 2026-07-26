@@ -108,7 +108,10 @@
       "Bash(curl -s -o fig2.png \"https://www.figma.com/api/mcp/asset/5119be54-02a8-49fe-902f-e80591bdfbd2\")",
       "Bash(curl -s -o fig3.png \"https://www.figma.com/api/mcp/asset/c9a8f9e8-7a8e-43d5-bcd8-521a2d6e38cf\")",
       "Bash(curl -s -o fig4.png \"https://www.figma.com/api/mcp/asset/3d01836c-8811-45fa-974e-e6bd0a4ded01\")",
-      "Bash(grep -nE 'function create|function update|video|content_type|type|fillable|\\\\$data|default')"
+      "Bash(grep -nE 'function create|function update|video|content_type|type|fillable|\\\\$data|default')",
+      "Bash(php -l config/hr.php)",
+      "Bash(php -l app/Services/HRSystemService.php)",
+      "Bash(php -l app/Services/NotificationsApiService.php)"
     ]
   }
 }
