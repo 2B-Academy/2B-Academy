@@ -128,6 +128,8 @@ class LectureProgressService
                 'id'   => $lecture->section->id,
                 'name' => $lecture->section->getTranslation('name', app()->getLocale()),
             ] : null,
+            // "Related to session number" — drives the player's "Week N" grouping.
+            'session_number'     => $lecture->session_number !== null ? (int) $lecture->session_number : null,
             'progress'   => $progressMap[$lecture->id]->progress ?? 0,
             'completed'  => (bool) ($progressMap[$lecture->id]->completed ?? false),
         ])->all();

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Mobile\AcademyController;
 use App\Http\Controllers\Api\Mobile\CertificateController;
 use App\Http\Controllers\Api\Mobile\MyLearningController;
+use App\Http\Controllers\apis\Learner\AttendanceController;
+use App\Http\Controllers\apis\Learner\MessageController;
 use App\Http\Controllers\apis\Learner\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -67,6 +69,10 @@ Route::middleware(['auth.user', 'role:User'])
         Route::get('summary',        [ProfileController::class, 'summary']);
         Route::get('qualifications', [ProfileController::class, 'qualifications']);
         Route::get('completed',      [ProfileController::class, 'completed']);
+        Route::get('schedule',       [ProfileController::class, 'weekSchedule']);
+
+        // "Mark as Present" — passcode attendance (browser twin of mobile S-06).
+        Route::post('attendance/mark', [AttendanceController::class, 'mark']);
 
         Route::get('learnings',    [MyLearningController::class, 'active']);
         Route::get('certificates', [MyLearningController::class, 'certificates']);
@@ -76,4 +82,14 @@ Route::middleware(['auth.user', 'role:User'])
             ->whereNumber('course');
         Route::get('certificates/{certificate}/download', [CertificateController::class, 'downloadFile'])
             ->whereNumber('certificate');
+
+        // Two-way messaging (Figma 841-42746 / 841-43294).
+        Route::get('messages',              [MessageController::class, 'index']);
+        Route::get('messages/unread-count', [MessageController::class, 'unreadCount']);
+        Route::get('messages/recipients',   [MessageController::class, 'recipients']);
+        Route::post('messages',             [MessageController::class, 'store']);
+        Route::get('messages/{conversation}', [MessageController::class, 'show'])
+            ->whereNumber('conversation');
+        Route::post('messages/{conversation}/reply', [MessageController::class, 'reply'])
+            ->whereNumber('conversation');
     });

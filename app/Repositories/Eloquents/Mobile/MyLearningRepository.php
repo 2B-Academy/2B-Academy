@@ -28,14 +28,14 @@ final class MyLearningRepository implements MyLearningRepositoryInterface
 {
     public function __construct(private readonly Course $course) {}
 
-    public function activeCoursesForUser(User $user, int $perPage): LengthAwarePaginator
+    public function activeCoursesForUser(User $user, int $perPage, array $excludeCourseIds = []): LengthAwarePaginator
     {
-        return $this->activeCoursesQuery($user)->paginate($perPage);
+        return $this->activeCoursesQuery($user, $excludeCourseIds)->paginate($perPage);
     }
 
-    public function previewActiveCourses(User $user, int $limit): EloquentCollection
+    public function previewActiveCourses(User $user, int $limit, array $excludeCourseIds = []): EloquentCollection
     {
-        return $this->activeCoursesQuery($user)->limit($limit)->get();
+        return $this->activeCoursesQuery($user, $excludeCourseIds)->limit($limit)->get();
     }
 
     public function courseProgressSummary(User $user, int $courseId, int $cohortId, string $locale): array
@@ -108,11 +108,17 @@ final class MyLearningRepository implements MyLearningRepositoryInterface
         }
 
         // 5. Progress percent — bounded [0, 100], guarded against
-        //    division by zero so empty courses show "0%" instead of
-        //    crashing.
-        $progress = $totalLectures > 0
-            ? (int) floor(($completedLectures * 100) / $totalLectures)
-            : 0;
+        //    division by zero. Lecture-based when the course has lectures;
+        //    otherwise (session/offline course with zero lectures) fall back
+        //    to attendance so an instructor-led course shows real progress
+        //    instead of a misleading hard-coded 0%.
+        if ($totalLectures > 0) {
+            $progress = (int) floor(($completedLectures * 100) / $totalLectures);
+        } elseif ($totalSessions > 0) {
+            $progress = (int) min(100, floor(($attended * 100) / $totalSessions));
+        } else {
+            $progress = 0;
+        }
 
         return [
             'attended'           => $attended,
@@ -305,12 +311,16 @@ final class MyLearningRepository implements MyLearningRepositoryInterface
         return $end->lessThan($now);
     }
 
-    private function activeCoursesQuery(User $user)
+    private function activeCoursesQuery(User $user, array $excludeCourseIds = [])
     {
         $today = now()->toDateString();
 
         return $this->course->newQuery()
             ->select(['courses.id', 'courses.title', 'courses.course_type', 'courses.image', 'courses.hours'])
+            // Drop courses the learner is already done with (completed
+            // competency OR ended cohort). Without this a session course whose
+            // cohort has ended lingered here with a meaningless 0% progress.
+            ->when($excludeCourseIds !== [], fn ($q) => $q->whereNotIn('courses.id', $excludeCourseIds))
             ->with([
                 'category:id,name',
                 'instructors:id,name,image',

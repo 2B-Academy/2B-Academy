@@ -152,6 +152,40 @@ class CertificateProjectionService
         return $results;
     }
 
+    /**
+     * Does the learner MEET this course's certificate criteria right now?
+     *
+     * Unlike {@see projectForCourse}, this ignores whether a certificate has
+     * already been issued — it answers the raw question "has the bar been
+     * cleared?", so it can drive actual issuance (CertificateService) without
+     * the earned-short-circuit making it always-true once a cert exists.
+     *
+     * Returns false when the course offers no certificate, when the relevant
+     * metric can't be measured yet (e.g. no sessions/exam), or when any
+     * required threshold is unmet.
+     */
+    public function meetsIssuanceCriteria(User $user, Course $course): bool
+    {
+        if (!$course->certificate) {
+            return false;
+        }
+
+        $mode = $course->certificate_mode ?: Course::CERTIFICATE_MODE_SCORE;
+
+        $checks = [];
+        if (in_array($mode, [Course::CERTIFICATE_MODE_ATTENDANCE, Course::CERTIFICATE_MODE_BOTH], true)) {
+            $pct = $this->attendancePercent($user, $course);
+            $checks[] = $pct !== null && $pct >= (int) ($course->certificate_attendance_threshold ?? 75);
+        }
+        if (in_array($mode, [Course::CERTIFICATE_MODE_SCORE, Course::CERTIFICATE_MODE_BOTH], true)) {
+            $pct = $this->scorePercent($user, $course);
+            $checks[] = $pct !== null && $pct >= (int) ($course->certificate_score_threshold ?? 60);
+        }
+
+        // Every required check must be present AND satisfied.
+        return $checks !== [] && !in_array(false, $checks, true);
+    }
+
     /* ------------------------------------------------------------------ *
      |  SHARED DECISION LOGIC                                             |
      * ------------------------------------------------------------------ */

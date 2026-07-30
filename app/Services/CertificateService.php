@@ -31,6 +31,7 @@ class CertificateService
 {
     public function __construct(
         private readonly UserCertificateRepositoryInterface $repo,
+        private readonly CertificateProjectionService $projection,
     ) {}
 
     /* ================================================================ *
@@ -104,6 +105,38 @@ class CertificateService
         );
     }
 
+    /**
+     * Issue a certificate for a session/offline course earned through
+     * attendance (and/or score, per the course's certificate_mode). Gated on
+     * the course offering a certificate AND the learner meeting every
+     * configured threshold. Idempotent; returns null when not yet eligible.
+     *
+     * This is the path that lets instructor-led / attendance-based courses
+     * mint a real certificate â€” previously impossible, since issuance only
+     * ever fired from exam pass / evaluation submit.
+     */
+    public function issueFromAttendance(User $user, Course $course): ?UserCertificate
+    {
+        if (!$course->certificate) {
+            return null;
+        }
+        if (!$this->projection->meetsIssuanceCriteria($user, $course)) {
+            return null;
+        }
+
+        return $this->issue(
+            userId: (int) $user->id,
+            courseId: (int) $course->id,
+            sourceType: UserCertificate::SOURCE_ATTENDANCE,
+            sourceId: null,
+            issuedAt: now(),
+            issuedBy: null,
+            metadata: $this->snapshot($user, $course, [
+                'source' => UserCertificate::SOURCE_ATTENDANCE,
+            ]),
+        );
+    }
+
     /* ================================================================ *
      |  Lifecycle                                                       |
      * ================================================================ */
@@ -129,7 +162,7 @@ class CertificateService
     }
 
     /* ================================================================ *
-     |  Legacy read API (kept for /api/v1/certificates) — DB-backed     |
+     |  Legacy read API (kept for /api/v1/certificates) ï¿½ DB-backed     |
      * ================================================================ */
 
     public function paginate(int $perPage = 20, ?int $courseId = null): LengthAwarePaginator
@@ -154,7 +187,7 @@ class CertificateService
      * ================================================================ */
 
     /**
-     * Core issuance routine — transactional, idempotent (one active
+     * Core issuance routine ï¿½ transactional, idempotent (one active
      * certificate per learner+course), and number-safe under concurrency.
      */
     private function issue(

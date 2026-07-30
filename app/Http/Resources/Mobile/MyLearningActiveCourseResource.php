@@ -56,6 +56,13 @@ class MyLearningActiveCourseResource extends JsonResource
             ? $myLearn->nextSessionFor($authUser, $course->id, (int) $cohort->id, $locale)
             : null;
 
+        // Certificate projection ("earned" / "on_track" / "at_risk" /
+        // "blocked" — or null when the course offers no certificate). Drives
+        // the Figma "Certificate: On track / At Risk" badge on the card.
+        $certificate = $authUser !== null
+            ? app(\App\Services\CertificateProjectionService::class)->projectForCourse($authUser, $course)
+            : null;
+
         // The learner's own rating for this course (null ⇒ app shows the
         // "Add rate" CTA, otherwise it renders the existing score).
         $userRating = $myLearn->userRatingForCourse($authUser, $course->id);
@@ -122,6 +129,9 @@ class MyLearningActiveCourseResource extends JsonResource
                 'absences'           => (int) $progress['absences'],
                 'next_unit_title'    => $progress['next_unit_title'],
             ],
+            // Certificate progress projection for the card badge.
+            'certificate_status'     => $certificate['status'] ?? null,
+            'certificate_projection' => $certificate,
             // The learner's own rating (null when not rated yet).
             'rate'           => $rateValue,
             // Localized sentiment label for the rating (null when unrated).

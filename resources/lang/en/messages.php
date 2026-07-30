@@ -19,6 +19,7 @@ return [
     'created'             => 'Created successfully.',
     'updated'             => 'Updated successfully.',
     'deleted'             => 'Deleted successfully.',
+    'sent'                => 'Message sent.',
     'not_found'           => 'Resource not found.',
     'server_error'        => 'An unexpected error occurred.',
 
@@ -51,6 +52,7 @@ return [
     'course_player' => [
         'general_content'   => 'Course Content',
         'assessments_group'  => 'Assessments',
+        'week'               => 'Week :number',
     ],
 
     // Learner rich quiz / assignment submission (question-based)

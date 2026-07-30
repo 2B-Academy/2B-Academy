@@ -2,12 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Course;
 use App\Models\User;
 use App\Models\UserCourseEvaluation;
 use App\Models\UserExam;
+use App\Models\UsersCourse;
 use App\Services\CertificateService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * php artisan certificates:migrate-existing
@@ -93,15 +96,101 @@ class MigrateExistingCertificates extends Command
             $certificate->wasRecentlyCreated ? $created++ : $skipped++;
         }
 
+        // ── Attendance-based certificates ───────────────────────────────
+        // Session/offline courses whose certificate_mode includes attendance.
+        // issueFromAttendance self-checks the threshold, so we simply attempt
+        // every enrolment and count what actually mints.
+        $attendanceCandidates = $this->collectAttendanceCandidates($userId);
+        foreach ($attendanceCandidates as [$user, $course]) {
+            if ($dryRun) {
+                $this->line(sprintf('  [dry-run] attendance → user %d / course %d', (int) $user->id, (int) $course->id));
+                continue;
+            }
+
+            $certificate = $certificates->issueFromAttendance($user, $course);
+            if ($certificate === null) {
+                $skipped++;
+                continue;
+            }
+            $certificate->wasRecentlyCreated ? $created++ : $skipped++;
+        }
+
         $this->info(sprintf(
-            '%sIssued: %d · skipped (existing/ineligible): %d · scanned: %d',
+            '%sIssued: %d · skipped (existing/ineligible): %d · scanned: %d (exam/eval) + %d (attendance)',
             $dryRun ? '[dry-run] ' : '',
             $created,
             $skipped,
             $completions->count(),
+            $attendanceCandidates->count(),
         ));
 
+        $this->reportConfigGaps();
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Learner+course pairs enrolled in certificate courses whose mode grants a
+     * certificate by attendance (attendance | both). Issuance eligibility (the
+     * threshold) is decided inside CertificateService::issueFromAttendance.
+     *
+     * @return \Illuminate\Support\Collection<int, array{0: User, 1: Course}>
+     */
+    private function collectAttendanceCandidates(?int $userId): \Illuminate\Support\Collection
+    {
+        $courses = Course::query()
+            ->where('certificate', true)
+            ->whereIn('certificate_mode', [Course::CERTIFICATE_MODE_ATTENDANCE, Course::CERTIFICATE_MODE_BOTH])
+            ->get()
+            ->keyBy('id');
+
+        if ($courses->isEmpty()) {
+            return collect();
+        }
+
+        return UsersCourse::query()
+            ->whereIn('course_id', $courses->keys()->all())
+            ->when($userId, fn ($q) => $q->where('user_id', $userId))
+            ->with('user')
+            ->get()
+            ->map(fn (UsersCourse $uc) => [$uc->user, $courses->get($uc->course_id)])
+            ->filter(fn (array $pair) => $pair[0] !== null && $pair[1] !== null)
+            ->values();
+    }
+
+    /**
+     * Surface courses that have real completions but can never mint a
+     * certificate because the course itself isn't configured to grant one —
+     * so an admin can flip the flag/mode rather than wonder why the table
+     * stays empty.
+     */
+    private function reportConfigGaps(): void
+    {
+        $noFlag = DB::table('courses')
+            ->where(function ($q) {
+                $q->where('certificate', false)->orWhereNull('certificate');
+            })
+            ->whereExists(function ($q) {
+                $q->from('users_courses')->whereColumn('users_courses.course_id', 'courses.id');
+            })
+            ->count();
+
+        $attendanceButNoMode = DB::table('courses')
+            ->where('certificate', true)
+            ->where(function ($q) {
+                $q->whereNull('certificate_mode')->orWhere('certificate_mode', Course::CERTIFICATE_MODE_SCORE);
+            })
+            ->whereExists(function ($q) {
+                $q->from('course_sessions')->whereColumn('course_sessions.course_id', 'courses.id');
+            })
+            ->count();
+
+        if ($noFlag > 0) {
+            $this->warn("· {$noFlag} enrolled course(s) have certificate=false — they will never issue a certificate until enabled.");
+        }
+        if ($attendanceButNoMode > 0) {
+            $this->warn("· {$attendanceButNoMode} session course(s) have certificate=true but certificate_mode is score/unset — set certificate_mode='attendance' (or 'both') to certify by attendance.");
+        }
     }
 
     /**

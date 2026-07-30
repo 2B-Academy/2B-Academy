@@ -27,6 +27,7 @@ class UserCertificate extends Model
 
     public const SOURCE_EXAM       = 'exam';
     public const SOURCE_EVALUATION = 'evaluation';
+    public const SOURCE_ATTENDANCE = 'attendance';
 
     protected $guarded = ['id'];
 

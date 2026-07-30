@@ -153,6 +153,15 @@ final class MobileAttendanceService
             return (int) $attendanceId;
         });
 
+        // Attendance just changed — a session/offline course may now clear its
+        // attendance-threshold certificate. Idempotent + guarded so a
+        // projection hiccup can never fail the mark-present itself.
+        try {
+            app(\App\Services\CertificateService::class)->issueFromAttendance($user, $course);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return [
             'success'              => true,
             'failure'              => null,

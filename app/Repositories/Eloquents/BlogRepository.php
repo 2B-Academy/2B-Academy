@@ -56,6 +56,7 @@ class BlogRepository extends BaseRepository implements BlogRepositoryInterface
     {
         return $this->model->newQuery()
             ->with(['author', 'creator', 'qualificationSkills', 'sections'])
+            ->withCount('likes')
             ->when($onlyPublished, fn ($q) => $q->published())
             ->where('slug', $slug)
             ->first();

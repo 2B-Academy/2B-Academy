@@ -185,10 +185,87 @@ final class QualificationProgressService
             ->where('courses.is_evaluate', true)
             ->pluck('user_course_evaluations.course_id');
 
+        // (d) holds an active first-class certificate. This makes issued
+        // certificates (incl. the attendance-threshold path added in 2026)
+        // a completion signal in their own right, so attendance-based
+        // courses that mint a certificate count as a completed competency.
+        $byCertificate = DB::table('user_certificates')
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->pluck('course_id');
+
         return $fullyByProgress
             ->merge($byExam)
             ->merge($byEvaluation)
+            ->merge($byCertificate)
             ->unique()
+            ->values();
+    }
+
+    /**
+     * Course ids the learner is *done with* — the broader "finished" set used
+     * by the My-Learnings "Completed" tab and to exclude courses from the
+     * "Current" tab. This is {@see completedCourseIdsForUser} (a successfully
+     * earned competency) UNION every enrolment whose cohort has already ended.
+     *
+     * The distinction matters: a session/offline course whose cohort is over
+     * but where the learner fell short of the attendance threshold is
+     * "finished" (belongs in Completed, gone from Current) yet is NOT a
+     * completed competency (no certificate, not counted toward qualification
+     * progress). Keeping the two sets separate is what fixes the bug where
+     * such a course lingered in "Current" with a meaningless 0% / "Continue
+     * Learning" while ALSO appearing in "Completed".
+     *
+     * @return Collection<int, int>  course ids
+     */
+    public function finishedCourseIdsForUser(int $userId): Collection
+    {
+        return $this->completedCourseIdsForUser($userId)
+            ->merge($this->endedCohortCourseIdsForUser($userId))
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Course ids the learner is enrolled in whose cohort has already ended.
+     *
+     * A cohort counts as ended when ANY of these hold:
+     *   - its status is explicitly `completed`; or
+     *   - it has an `end_date` in the past; or
+     *   - it has sessions and none of them is today-or-later (every session
+     *     has been held). This last rule is what catches cohorts left with a
+     *     NULL `end_date` even though their sessions finished months ago — the
+     *     exact shape that kept a course perpetually "active".
+     *
+     * @return Collection<int, int>  course ids
+     */
+    public function endedCohortCourseIdsForUser(int $userId): Collection
+    {
+        $today = now()->toDateString();
+
+        return DB::table('users_courses as uc')
+            ->join('course_sections as cs', 'cs.id', '=', 'uc.group_id')
+            ->where('uc.user_id', $userId)
+            ->where(function ($q) use ($today) {
+                $q->where('cs.status', 'completed')
+                  ->orWhere(function ($q2) use ($today) {
+                      $q2->whereNotNull('cs.end_date')->whereDate('cs.end_date', '<', $today);
+                  })
+                  ->orWhere(function ($q2) use ($today) {
+                      // Has sessions, but every session is in the past.
+                      $q2->whereExists(function ($sub) {
+                          $sub->from('course_sessions')
+                              ->whereColumn('course_sessions.section_id', 'cs.id');
+                      })->whereNotExists(function ($sub) use ($today) {
+                          $sub->from('course_sessions')
+                              ->whereColumn('course_sessions.section_id', 'cs.id')
+                              ->whereDate('course_sessions.session_date', '>=', $today);
+                      });
+                  });
+            })
+            ->distinct()
+            ->pluck('uc.course_id')
+            ->map(fn ($v) => (int) $v)
             ->values();
     }
 }

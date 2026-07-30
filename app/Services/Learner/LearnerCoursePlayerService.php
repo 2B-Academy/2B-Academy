@@ -65,10 +65,22 @@ class LearnerCoursePlayerService
             ->get()
             ->keyBy('course_assignment_id');
 
+        // Group into "Week N" buckets by the module's assigned session number
+        // (Figma 913-*). Modules without a session number fall back to their
+        // module/section name, then a trailing "General content" bucket.
+        // $order keeps weeks numerically sorted ahead of the assessments tail.
         $groups = [];
+        $order  = [];
 
         foreach ($lectures as $lecture) {
-            $label = $lecture['module']['name'] ?? __('messages.course_player.general_content');
+            $n = $lecture['session_number'] ?? null;
+            if ($n) {
+                $label = __('messages.course_player.week', ['number' => $n]);
+                $sort  = $n;
+            } else {
+                $label = $lecture['module']['name'] ?? __('messages.course_player.general_content');
+                $sort  = 9000;
+            }
             $groups[$label][] = [
                 'kind' => 'lecture',
                 'id' => $lecture['lecture_id'],
@@ -76,6 +88,7 @@ class LearnerCoursePlayerService
                 'content_type' => $lecture['content_type'],
                 'completed' => $lecture['completed'],
             ];
+            $order[$label] ??= $sort;
         }
 
         foreach ($exams as $exam) {
@@ -92,6 +105,7 @@ class LearnerCoursePlayerService
                 'content_type' => null,
                 'completed' => $userExam?->submission_status === UserExam::SUBMISSION_SUBMITTED,
             ];
+            $order[$label] ??= 9500;
         }
 
         foreach ($assignments as $assignment) {
@@ -105,7 +119,10 @@ class LearnerCoursePlayerService
                 'content_type' => null,
                 'completed' => $userAssignment?->submitted_at !== null,
             ];
+            $order[$label] ??= 9999;
         }
+
+        uksort($groups, fn ($a, $b) => ($order[$a] ?? 9999) <=> ($order[$b] ?? 9999));
 
         $weeks = $this->flagActiveItem($groups);
 

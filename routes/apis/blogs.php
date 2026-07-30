@@ -15,10 +15,14 @@ use Illuminate\Support\Facades\Route;
 Route::get('blogs',                 [BlogController::class, 'index']);
 Route::get('blogs/job-titles',      [BlogController::class, 'jobTitleFilters']);
 Route::get('blogs/{slug}/related',  [BlogController::class, 'related']);
-Route::get('blogs/{slug}',          [BlogController::class, 'show']);
+// Optional auth: guests get the blog; a signed-in reader also gets `loved`.
+Route::middleware('auth.user.optional')->get('blogs/{slug}', [BlogController::class, 'show']);
 
-// ── Learner (website "Tailored for Me") ────────────────────────────────────
-Route::middleware('auth.user')->get('learner/blogs', [BlogController::class, 'tailoredIndex']);
+// ── Learner (website: "Tailored for Me" + love reaction) ───────────────────
+Route::middleware('auth.user')->group(function () {
+    Route::get('learner/blogs',        [BlogController::class, 'tailoredIndex']);
+    Route::post('blogs/{slug}/like',   [BlogController::class, 'toggleLike']);
+});
 
 // ── Admin (dashboard) ──────────────────────────────────────────────────────
 Route::prefix('admin')->middleware(['auth.user', 'role:Admin'])->group(function () {

@@ -382,6 +382,16 @@ Trait HelperTrait
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // A manually-recorded attendance may push the learner over the
+        // attendance certificate threshold. Idempotent + guarded so it can
+        // never break the attendance save.
+        try {
+            app(\App\Services\CertificateService::class)->issueFromAttendance($user, $course);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return $this->successResponse('تم تسجيل الحضور بنجاح');
     }
 

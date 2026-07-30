@@ -21,6 +21,7 @@ final class MyLearningService
     public function __construct(
         private readonly MyLearningRepositoryInterface $repository,
         private readonly MobileSettings $settings,
+        private readonly QualificationProgressService $qualifications,
     ) {}
 
     public function activeCoursesPaginated(User $user): LengthAwarePaginator
@@ -28,6 +29,7 @@ final class MyLearningService
         return $this->repository->activeCoursesForUser(
             $user,
             $this->settings->myLearningActivePerPage(),
+            $this->qualifications->finishedCourseIdsForUser((int) $user->id)->all(),
         );
     }
 
@@ -36,6 +38,7 @@ final class MyLearningService
         return $this->repository->previewActiveCourses(
             $user,
             $this->settings->myLearningActivePreviewCount(),
+            $this->qualifications->finishedCourseIdsForUser((int) $user->id)->all(),
         );
     }
 

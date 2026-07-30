@@ -94,4 +94,13 @@ class Blog extends Model
             'qualification_skill_id',
         );
     }
+
+    /**
+     * Per-user "love" reactions. `love_count` = COUNT of these; whether the
+     * current learner loved the blog is a lookup on this relation by user_id.
+     */
+    public function likes(): HasMany
+    {
+        return $this->hasMany(BlogLike::class);
+    }
 }

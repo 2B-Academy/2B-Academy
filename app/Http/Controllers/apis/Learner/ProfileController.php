@@ -54,4 +54,13 @@ final class ProfileController extends ApiController
             $this->dashboard->completedCourses($request->user(), app()->getLocale()),
         );
     }
+
+    /** This week's sessions across the learner's enrolments ("This week" card). */
+    public function weekSchedule(Request $request): JsonResponse
+    {
+        return $this->success(
+            'Profile week schedule',
+            $this->dashboard->weekSchedule($request->user(), app()->getLocale()),
+        );
+    }
 }

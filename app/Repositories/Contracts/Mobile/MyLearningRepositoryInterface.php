@@ -25,18 +25,21 @@ use Illuminate\Support\Collection as SupportCollection;
 interface MyLearningRepositoryInterface
 {
     /**
-     * Active courses (enrolled and not yet completed) for the user.
+     * Active courses (enrolled and not yet finished) for the user.
      *
+     * @param  array<int, int>  $excludeCourseIds  Course ids the learner is
+     *         already done with (see QualificationProgressService::finishedCourseIdsForUser).
      * @return LengthAwarePaginator<Course>
      */
-    public function activeCoursesForUser(User $user, int $perPage): LengthAwarePaginator;
+    public function activeCoursesForUser(User $user, int $perPage, array $excludeCourseIds = []): LengthAwarePaginator;
 
     /**
      * Same shape, but already sliced for the overview preview.
      *
+     * @param  array<int, int>  $excludeCourseIds
      * @return EloquentCollection<int, Course>
      */
-    public function previewActiveCourses(User $user, int $limit): EloquentCollection;
+    public function previewActiveCourses(User $user, int $limit, array $excludeCourseIds = []): EloquentCollection;
 
     /**
      * Per-course aggregate stats for the My Learning cards.

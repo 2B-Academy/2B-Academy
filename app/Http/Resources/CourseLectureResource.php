@@ -24,6 +24,12 @@ class CourseLectureResource extends JsonResource
             'content_type'       => $this->content_type ?? 'video',
             'learner_scope'      => $this->learner_scope ?? 'all',
             'session_id'         => $this->session_id,
+            // "Related to session number" — the week/session this module is
+            // taught in (Figma 355-9951). Must be echoed back so the Edit dialog
+            // can prefill the field instead of showing null.
+            'session_number'     => $this->session_number !== null
+                ? (int) $this->session_number
+                : null,
             'duration_minutes'   => $this->duration_minutes,
 
             'type'               => $this->type,

@@ -13,6 +13,8 @@ class BlogResource extends BlogListResource
 {
     public function toArray(Request $request): array
     {
+        $user = $request->user();
+
         return array_merge(parent::toArray($request), [
             'author_user_id'          => $this->author_user_id,
             'is_anonymous'            => (bool) $this->is_anonymous,
@@ -22,6 +24,10 @@ class BlogResource extends BlogListResource
             'sections'               => BlogSectionResource::collection(
                 $this->whenLoaded('sections')
             ),
+            // "Love" reaction (Figma 1589-46108). love_count is public; `loved`
+            // reflects the authenticated learner (false for guests).
+            'love_count'              => (int) ($this->likes_count ?? $this->likes()->count()),
+            'loved'                   => $user !== null && $this->likes()->where('user_id', $user->id)->exists(),
         ]);
     }
 

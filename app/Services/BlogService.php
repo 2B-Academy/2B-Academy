@@ -47,6 +47,29 @@ class BlogService
     }
 
     /**
+     * Toggle the authenticated learner's "love" on a blog.
+     *
+     * @return array{loved: bool, love_count: int}
+     */
+    public function toggleLike(Blog $blog, int $userId): array
+    {
+        $existing = $blog->likes()->where('user_id', $userId)->first();
+
+        if ($existing) {
+            $existing->delete();
+            $loved = false;
+        } else {
+            $blog->likes()->create(['user_id' => $userId]);
+            $loved = true;
+        }
+
+        return [
+            'loved'      => $loved,
+            'love_count' => $blog->likes()->count(),
+        ];
+    }
+
+    /**
      * Job titles usable as listing filters — ONLY those linked (via
      * job_title_qualification_skill) to a qualification that is actually
      * assigned to a published blog. Localized to the active locale.

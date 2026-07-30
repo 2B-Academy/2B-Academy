@@ -166,7 +166,12 @@ final class ProfileDashboardService
      */
     public function completedCourses(User $user, string $locale): Collection
     {
-        $completedIds = $this->qualificationProgress->completedCourseIdsForUser((int) $user->id);
+        // The "Completed" tab shows every course the learner is DONE with —
+        // successfully-earned competencies plus cohorts that have simply
+        // ended (even if the learner fell short of the certificate). This is
+        // the same set the "Current" tab excludes, so a course can never
+        // appear in both tabs at once.
+        $completedIds = $this->qualificationProgress->finishedCourseIdsForUser((int) $user->id);
         if ($completedIds->isEmpty()) {
             return collect();
         }
@@ -176,7 +181,7 @@ final class ProfileDashboardService
         $scores          = $this->finalExamScoresByCourse($user, $completedIds);
 
         return Course::whereIn('id', $completedIds->all())
-            ->get(['id', 'title', 'image', 'course_type'])
+            ->get(['id', 'title', 'image', 'course_type', 'certificate'])
             ->map(function (Course $c) use ($locale, $certificates, $completionDate, $scores) {
                 $cid = (int) $c->id;
 
@@ -189,9 +194,59 @@ final class ProfileDashboardService
                     'score_percent'      => $scores[$cid] ?? null,
                     'certificate_id'     => $certificates[$cid] ?? null,
                     'certificate_earned' => isset($certificates[$cid]),
+                    // Whether the course offers a certificate at all. Lets the
+                    // UI distinguish a red "Not certified" (offered but not
+                    // earned) from a neutral "Completed" (never offered one) —
+                    // instead of always shaming an un-certifiable course.
+                    'certificate_offered' => (bool) $c->certificate,
                 ];
             })
             ->values();
+    }
+
+    /**
+     * This week's sessions across the learner's active enrolments — feeds the
+     * profile "This week" calendar card (Figma right rail). Each row is tagged
+     * active (today) / upcoming (later this week) / past.
+     *
+     * @return array{range: array{start:string, end:string}, sessions: array<int, array<string, mixed>>}
+     */
+    public function weekSchedule(User $user, string $locale): array
+    {
+        $start = Carbon::now()->startOfWeek();
+        $end   = Carbon::now()->endOfWeek();
+        $today = Carbon::now()->toDateString();
+
+        $rows = DB::table('users_courses as uc')
+            ->join('course_sessions as cs', 'cs.section_id', '=', 'uc.group_id')
+            ->join('courses as c', 'c.id', '=', 'uc.course_id')
+            ->where('uc.user_id', $user->id)
+            ->whereNotNull('cs.session_date')
+            ->whereBetween('cs.session_date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('cs.session_date')
+            ->orderBy('cs.time_from')
+            ->get(['cs.id', 'cs.title', 'cs.session_date', 'cs.time_from', 'cs.time_to', 'c.id as course_id', 'c.title as course_title']);
+
+        $sessions = $rows->map(function ($r) use ($today) {
+            $date = (string) $r->session_date;
+            $status = $date === $today ? 'active' : ($date > $today ? 'upcoming' : 'past');
+
+            return [
+                'id'           => (int) $r->id,
+                'course_id'    => (int) $r->course_id,
+                'course_title' => $this->localizeJson($r->course_title, app()->getLocale()),
+                'title'        => (string) $r->title,
+                'session_date' => $date,
+                'time_from'    => $r->time_from,
+                'time_to'      => $r->time_to,
+                'status'       => $status,
+            ];
+        })->values()->all();
+
+        return [
+            'range'    => ['start' => $start->toDateString(), 'end' => $end->toDateString()],
+            'sessions' => $sessions,
+        ];
     }
 
     /** @return array<int, int> course_id => best final-exam percent */
@@ -312,9 +367,20 @@ final class ProfileDashboardService
             ->groupBy('cl.course_id')
             ->pluck('completed_at', 'course_id');
 
+        // Final fallback for session/offline courses completed by simply
+        // reaching the end of their cohort: the cohort end_date, else the
+        // last held session's date.
+        $byCohort = DB::table('users_courses as uc')
+            ->join('course_sections as cs', 'cs.id', '=', 'uc.group_id')
+            ->leftJoin(DB::raw('(SELECT section_id, MAX(session_date) AS last_session FROM course_sessions GROUP BY section_id) AS cse'), 'cse.section_id', '=', 'cs.id')
+            ->where('uc.user_id', $user->id)
+            ->whereIn('uc.course_id', $courseIds->all())
+            ->selectRaw('uc.course_id, COALESCE(cs.end_date, cse.last_session) AS completed_at')
+            ->pluck('completed_at', 'course_id');
+
         $result = [];
         foreach ($courseIds as $cid) {
-            $date = $byCert[$cid] ?? $byProgress[$cid] ?? null;
+            $date = $byCert[$cid] ?? $byProgress[$cid] ?? $byCohort[$cid] ?? null;
             $result[$cid] = $date ? Carbon::parse($date)->toDateString() : null;
         }
 

@@ -59,6 +59,10 @@ class CourseLectureRequest extends FormRequest
                     fn ($q) => $q->where('course_id', $courseId),
                 ),
             ],
+            // "Related to session number" — the week/session this module is
+            // taught in. Groups the module under "Week N" in the course player.
+            'session_number'     => 'nullable|integer|min:1|max:100',
+
             'duration_minutes'   => 'nullable|integer|min:0|max:10000',
 
             // `type` reflects how the primary payload is stored:

@@ -108,6 +108,24 @@ class BlogController extends ApiController
     }
 
     /**
+     * Toggle the authenticated learner's "love" on a published blog.
+     * Returns the new loved state + total love count.
+     */
+    public function toggleLike(Request $request, string $slug): JsonResponse
+    {
+        $blog = $this->service->findBySlug($slug, onlyPublished: true);
+
+        if (! $blog) {
+            return $this->notFound(__('messages.not_found'));
+        }
+
+        return $this->success(
+            __('messages.updated'),
+            $this->service->toggleLike($blog, (int) $request->user()->id),
+        );
+    }
+
+    /**
      * Related published blogs for the reading page rail.
      */
     public function related(string $slug): JsonResponse
