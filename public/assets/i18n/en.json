@@ -109,6 +109,7 @@
         "all": "Explore All"
       },
       "latest_in_role": "Latest in your role",
+      "latest_blog": "Latest Blog",
       "min_read": "min read",
       "filters": {
         "topic": "Topic",
@@ -128,7 +129,11 @@
       "about_author": "About the author",
       "related": "Related articles",
       "copy_link": "Copy link",
-      "link_copied": "Link copied to clipboard"
+      "link_copied": "Link copied to clipboard",
+      "link_copied_short": "Link Copied",
+      "love": "Love",
+      "loved_this": "Loved this",
+      "login_to_love": "Log in to love this article"
     },
     "who_we_are": {
       "hero": {
@@ -353,7 +358,21 @@
       },
       "card": {
         "sessions": "{{count}} sessions",
-        "started": "Started in"
+        "started": "Started in",
+        "total": "Total"
+      },
+      "complete": "complete",
+      "module": "Course content",
+      "content": {
+        "video": "Video",
+        "document": "Document",
+        "pdf": "Document",
+        "file": "Document",
+        "article": "Article",
+        "link": "External Link",
+        "external_link": "External Link",
+        "quiz": "Quiz",
+        "assignment": "Assignment"
       },
       "certificate": {
         "earned": "Certificate: Earned",
@@ -369,6 +388,25 @@
       "empty": {
         "title": "No active courses yet",
         "message": "Enrol in a course from the catalogue to start learning."
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "empty": "No messages yet",
+      "write": "Write a message…",
+      "new_message": "New Message",
+      "no_recipients": "No one available to message yet",
+      "select_conversation": "Select a conversation",
+      "back": "Back to Messages",
+      "group": {
+        "instructors": "Instructors",
+        "admins": "Super Admins",
+        "learners": "Learners"
+      },
+      "tabs": {
+        "all": "All",
+        "instructors": "Instructors",
+        "admins": "Admins"
       }
     },
     "profile": {
@@ -414,6 +452,14 @@
         "score": "Score: {{score}}%",
         "not_certified": "Not certified",
         "enrol_again": "Enrol again",
+        "enrolled": "Enrolled",
+        "my_rating": "My Rating:",
+        "certificate": {
+          "earned": "Certificate: Earned",
+          "on_track": "Certificate: On track",
+          "at_risk": "Certificate: At Risk",
+          "blocked": "Certificate: Not earned"
+        },
         "empty": {
           "upcoming": "No upcoming courses",
           "current": "No courses in progress",
@@ -424,6 +470,8 @@
           "question": "How are you finding this course?",
           "subtitle": "Your rating helps improve future cohorts.",
           "comment_label": "Add a comment (optional):",
+          "comment_label_required": "Add a comment:",
+          "comment_required": "A comment is required for this rating.",
           "comment_ph": "Your comment...",
           "submit": "Submit",
           "thanks": "Thanks for your feedback!",
@@ -441,21 +489,32 @@
         "my_attendance": "My Attendance",
         "present": "Present",
         "absent": "Absent",
+        "session_upcoming": "Upcoming",
         "no_sessions": "No sessions scheduled yet.",
-        "at_risk": "Certificate at risk — your attendance is below the required threshold."
+        "at_risk": "Certificate at risk — your attendance is below the required threshold.",
+        "this_week": "This week",
+        "legend_active": "Active",
+        "legend_upcoming": "Upcoming",
+        "mark_present": "Mark as Present",
+        "marked_present": "You're marked present",
+        "passcode_label": "Session passcode",
+        "passcode_digit": "Digit {{position}}",
+        "mark_error": "Couldn't mark attendance. Please try again."
       }
     },
     "course_player": {
       "back": "My Learnings",
       "modules_completed": "{{completed}} of {{total}} modules completed",
       "curriculum": "Course Curriculum",
+      "track_certificate": "Track your certificate",
       "empty": {
         "title": "No content yet",
         "message": "This course doesn't have any curriculum content yet. Please check back later."
       },
       "nav": {
         "previous": "Previous",
-        "next": "Next"
+        "next": "Next",
+        "position": "{{index}} of {{total}}"
       },
       "content_type": {
         "video": "Video",
@@ -470,7 +529,8 @@
         "link_question": "Visit the link, then mark this as complete.",
         "yes": "Yes",
         "no": "No",
-        "mark_complete": "Mark as complete",
+        "mark_complete": "Mark as completed",
+        "not_yet": "Not Yet",
         "duration": "Approximate duration: {{count}} mins",
         "required": "Require completion of this module to continue",
         "link_visit": "External link won't appear here, please click to navigate to the link",
@@ -544,6 +604,8 @@
         "pause": "Pause",
         "back_15": "Go backwards 15 seconds",
         "fwd_15": "Go forward 15 seconds",
+        "expand": "Expand video",
+        "collapse": "Collapse video",
         "step1": "1 — Admin sets the role",
         "step2": "2 — System maps qualifications",
         "step3": "3 — Instructor creates course",
