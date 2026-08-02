@@ -16,9 +16,12 @@ use Illuminate\Support\Facades\DB;
  * "Open session for the user" means:
  *   - belongs to the course
  *   - belongs to the user's cohort (users_courses.group_id)
- *   - has a session_date == today (or null + open passcode)
+ *   - has a session_date == today (or null)
  *   - now ∈ [time_from - openBuffer, time_to + graceBuffer]
- *   - passcode is set AND passcode_expires_at > now (when present)
+ *
+ * Passcode presence/expiry is intentionally NOT part of this query —
+ * the service checks that separately so it can tell "no session right
+ * now" apart from "session's live, but the code just expired".
  */
 final class MobileAttendanceRepository implements MobileAttendanceRepositoryInterface
 {
@@ -67,14 +70,6 @@ final class MobileAttendanceRepository implements MobileAttendanceRepositoryInte
                         [$nowTime, $graceBuf],
                     );
                 });
-            })
-            // Passcode must be set and still valid. If passcode_expires_at
-            // is NULL we trust the session_date/time window alone, but
-            // a stored passcode IS required for the mark-present flow.
-            ->whereNotNull('passcode')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('passcode_expires_at')
-                  ->orWhere('passcode_expires_at', '>=', $now);
             });
 
         if ($sessionId !== null) {

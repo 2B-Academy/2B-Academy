@@ -8,19 +8,22 @@ use App\Models\CourseSection;
 use App\Models\User;
 use App\Models\UserCertificate;
 use App\Models\UsersCourse;
+use App\Services\CertificatePolicy;
 use App\Services\CertificateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\ConfiguresCertificateRule;
 use Tests\TestCase;
 
 /**
  * Attendance-based certificate issuance (2026) — the path that lets
  * instructor-led / offline courses mint a real certificate once the learner
- * clears the course's attendance threshold. Previously impossible: issuance
- * only ever fired from exam pass / evaluation submit.
+ * clears the attendance threshold configured in Platform Config. Previously
+ * impossible: issuance only ever fired from exam pass / evaluation submit.
  */
 class AttendanceCertificateTest extends TestCase
 {
     use RefreshDatabase;
+    use ConfiguresCertificateRule;
 
     private function service(): CertificateService
     {
@@ -29,12 +32,12 @@ class AttendanceCertificateTest extends TestCase
 
     private function attendanceCourse(int $threshold = 75, int $sessions = 4): Course
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_ATTENDANCE, minAttendance: $threshold);
+
         return Course::factory()->create([
-            'certificate'                      => true,
-            'certificate_mode'                 => Course::CERTIFICATE_MODE_ATTENDANCE,
-            'certificate_attendance_threshold' => $threshold,
-            'number_of_sessions'               => $sessions,
-            'is_evaluate'                      => false,
+            'certificate'        => true,
+            'number_of_sessions' => $sessions,
+            'is_evaluate'        => false,
         ]);
     }
 

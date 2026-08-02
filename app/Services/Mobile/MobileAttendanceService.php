@@ -20,11 +20,11 @@ use Illuminate\Support\Str;
  *
  *   1.  User is enrolled in the course.
  *   2.  There is a candidate session — same course, same cohort,
- *       today, inside the open/grace buffer, with a stored passcode
- *       not yet expired.
- *   3.  Passcode matches (constant-time compare).
+ *       today, inside the open/grace buffer.
+ *   3.  A passcode has been issued for that session.
  *   4.  Passcode is not expired.
- *   5.  User hasn't already attended this session.
+ *   5.  Passcode matches (constant-time compare).
+ *   6.  User hasn't already attended this session.
  *
  * On success we DON'T modify any existing service — we insert
  * directly into `attendances` with the same denormalized shape
@@ -86,20 +86,29 @@ final class MobileAttendanceService
             return $this->failure(AttendanceMarkFailure::NoOpenWindow);
         }
 
-        // Step 3 — passcode match (constant-time).
+        // Step 3 — a passcode must have been issued for this session.
+        // No passcode yet means the instructor hasn't opened attendance,
+        // which reads to the learner the same as "no window right now".
         $expected = (string) ($session->passcode ?? '');
-        if ($expected === '' || ! hash_equals($expected, $passcode)) {
-            return $this->failure(AttendanceMarkFailure::InvalidCode);
+        if ($expected === '') {
+            return $this->failure(AttendanceMarkFailure::NoOpenWindow);
         }
 
-        // Step 4 — passcode expiry.
+        // Step 4 — passcode expiry. Checked before the match so a stale
+        // code the learner is still typing is reported as "expired"
+        // rather than the less actionable "invalid".
         if ($session->passcode_expires_at !== null
             && \Carbon\Carbon::parse($session->passcode_expires_at)->isPast()
         ) {
             return $this->failure(AttendanceMarkFailure::ExpiredCode);
         }
 
-        // Step 5 — already attended.
+        // Step 5 — passcode match (constant-time).
+        if (! hash_equals($expected, $passcode)) {
+            return $this->failure(AttendanceMarkFailure::InvalidCode);
+        }
+
+        // Step 6 — already attended.
         if ($this->repository->hasAttendedSession($user, (int) $session->id)) {
             return $this->failure(AttendanceMarkFailure::AlreadyMarked, $session);
         }

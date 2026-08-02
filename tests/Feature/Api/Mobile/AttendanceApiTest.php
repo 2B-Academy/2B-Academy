@@ -122,6 +122,23 @@ class AttendanceApiTest extends MobileTestCase
         $this->assertError($response, 409);
     }
 
+    public function test_mark_present_with_expired_passcode_returns_expired_not_no_window(): void
+    {
+        $user = $this->employee();
+        [$course, , $session] = $this->openSessionFor($user);
+        $session->update(['passcode_expires_at' => now()->subMinute()]);
+
+        $response = $this->withHeaders($this->headersFor($user))
+                         ->postJson(self::BASE . '/mobile/attendance/mark', [
+                             'course_id'  => $course->id,
+                             'session_id' => $session->id,
+                             'passcode'   => self::PASSCODE,
+                         ]);
+
+        $this->assertError($response, 422);
+        $response->assertJson(['message' => __('messages.mobile.attendance_expired_code')]);
+    }
+
     public function test_mark_present_twice_returns_409_already_marked(): void
     {
         $user = $this->employee();

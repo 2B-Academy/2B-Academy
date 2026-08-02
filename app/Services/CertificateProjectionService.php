@@ -15,22 +15,20 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Predicts whether a learner is on track to earn a course's certificate
- * BEFORE it is actually issued — the persistent "Certificate: On track"
- * header badge needs this mid-course, not just at completion.
+ * Measures a learner against the certificate rule, and projects whether they
+ * are on track to earn a course's certificate BEFORE it is actually issued —
+ * the persistent "Certificate: On track" header badge needs this mid-course,
+ * not just at completion.
  *
- * This is new business logic built from scratch: prior to this service (and
- * the certificate_mode/certificate_attendance_threshold/certificate_score_threshold
- * columns added alongside it — see migration
- * 2026_07_12_120000_add_certificate_thresholds_to_courses_table), `courses`
- * only had a binary `certificate` flag with no way to configure HOW a
- * learner earns it or by how much. Confirmed absent by grepping every
- * migration/model for attendance-percent/threshold/certificate-mode
- * concepts before adding this — nothing pre-existing was renamed or reused.
+ * This service owns MEASUREMENT only. The rule itself — which metrics matter
+ * and at what threshold — belongs to {@see CertificatePolicy}, which reads it
+ * from Platform Config. Previously the rule was duplicated here against the
+ * per-course `certificate_mode` / `certificate_*_threshold` columns, which no
+ * API could set and which disagreed with the values the admin screen was
+ * saving; those columns are no longer consulted.
  *
- * It never gates real issuance — CertificateService::issueFromExam /
- * issueFromEvaluation remain the sole source of truth for actually minting
- * a certificate. This service only projects toward that outcome.
+ * Everything that decides or displays certificate eligibility routes through
+ * this pair, so there is exactly one place to change the rule.
  */
 class CertificateProjectionService
 {
@@ -38,6 +36,8 @@ class CertificateProjectionService
     public const STATUS_ON_TRACK = 'on_track';
     public const STATUS_AT_RISK  = 'at_risk';
     public const STATUS_BLOCKED  = 'blocked';
+
+    public function __construct(private readonly CertificatePolicy $policy) {}
 
     public function projectForCourse(User $user, Course $course): array
     {
@@ -153,16 +153,18 @@ class CertificateProjectionService
     }
 
     /**
-     * Does the learner MEET this course's certificate criteria right now?
+     * Does the learner MEET the certificate rule right now, on the strength
+     * of measured evidence alone?
      *
      * Unlike {@see projectForCourse}, this ignores whether a certificate has
      * already been issued — it answers the raw question "has the bar been
-     * cleared?", so it can drive actual issuance (CertificateService) without
-     * the earned-short-circuit making it always-true once a cert exists.
+     * cleared?", so it can drive actual issuance without the earned
+     * short-circuit making it always-true once a cert exists.
      *
-     * Returns false when the course offers no certificate, when the relevant
-     * metric can't be measured yet (e.g. no sessions/exam), or when any
-     * required threshold is unmet.
+     * Used by the attendance issuance path, which has no completion event of
+     * its own: the measurement IS the trigger, so at least one required
+     * metric must be measurable. Returns false when the course offers no
+     * certificate, when nothing is measurable, or when a threshold is unmet.
      */
     public function meetsIssuanceCriteria(User $user, Course $course): bool
     {
@@ -170,20 +172,34 @@ class CertificateProjectionService
             return false;
         }
 
-        $mode = $course->certificate_mode ?: Course::CERTIFICATE_MODE_SCORE;
+        $attendance = $this->attendancePercent($user, $course);
+        $score      = $this->scorePercent($user, $course);
 
-        $checks = [];
-        if (in_array($mode, [Course::CERTIFICATE_MODE_ATTENDANCE, Course::CERTIFICATE_MODE_BOTH], true)) {
-            $pct = $this->attendancePercent($user, $course);
-            $checks[] = $pct !== null && $pct >= (int) ($course->certificate_attendance_threshold ?? 75);
-        }
-        if (in_array($mode, [Course::CERTIFICATE_MODE_SCORE, Course::CERTIFICATE_MODE_BOTH], true)) {
-            $pct = $this->scorePercent($user, $course);
-            $checks[] = $pct !== null && $pct >= (int) ($course->certificate_score_threshold ?? 60);
+        return $this->policy->hasEvidence($attendance, $score)
+            && $this->policy->isSatisfiedBy($attendance, $score);
+    }
+
+    /**
+     * Does the learner clear the certificate rule, given that a completion
+     * event has already fired (final exam passed, evaluation submitted)?
+     *
+     * Same rule as {@see meetsIssuanceCriteria} minus the evidence
+     * requirement: the completion event is itself the evidence, so a metric
+     * this course cannot produce (an online course has no sessions, so no
+     * attendance %) is skipped rather than treated as a failure. Without
+     * that, switching Platform Config to "Attendance only" would silently
+     * stop every online course from ever certifying.
+     */
+    public function satisfiesPolicy(User $user, Course $course): bool
+    {
+        if (!$course->certificate) {
+            return false;
         }
 
-        // Every required check must be present AND satisfied.
-        return $checks !== [] && !in_array(false, $checks, true);
+        return $this->policy->isSatisfiedBy(
+            $this->attendancePercent($user, $course),
+            $this->scorePercent($user, $course),
+        );
     }
 
     /* ------------------------------------------------------------------ *
@@ -193,18 +209,13 @@ class CertificateProjectionService
     private function decide(Course $course, bool $hasCertificate, ?int $attendancePercent, ?int $scorePercent, bool $courseEnded): array
     {
         if ($hasCertificate) {
-            return array_merge($this->baseShape($course), ['status' => self::STATUS_EARNED]);
+            return array_merge($this->baseShape(), ['status' => self::STATUS_EARNED]);
         }
 
-        $mode = $course->certificate_mode ?: Course::CERTIFICATE_MODE_SCORE;
-
-        $checks = [];
-        if (in_array($mode, [Course::CERTIFICATE_MODE_ATTENDANCE, Course::CERTIFICATE_MODE_BOTH], true)) {
-            $checks['attendance'] = $attendancePercent === null ? null : $attendancePercent >= (int) ($course->certificate_attendance_threshold ?? 75);
-        }
-        if (in_array($mode, [Course::CERTIFICATE_MODE_SCORE, Course::CERTIFICATE_MODE_BOTH], true)) {
-            $checks['score'] = $scorePercent === null ? null : $scorePercent >= (int) ($course->certificate_score_threshold ?? 60);
-        }
+        // Unmeasurable metrics come back as null and are skipped, so they
+        // never push a learner into at_risk for something their course
+        // simply cannot report.
+        $checks = $this->policy->checks($attendancePercent, $scorePercent);
 
         $failing = array_keys(array_filter($checks, fn ($meets) => $meets === false));
 
@@ -213,7 +224,7 @@ class CertificateProjectionService
 
         if (!empty($failing)) {
             $status = $courseEnded ? self::STATUS_BLOCKED : self::STATUS_AT_RISK;
-            $blockedReason = count($failing) === 2 ? 'both' : $failing[0];
+            $blockedReason = count($failing) > 1 ? 'both' : $failing[0];
         }
 
         $message = null;
@@ -225,15 +236,34 @@ class CertificateProjectionService
             };
         }
 
-        return [
+        return array_merge($this->ruleShape(), [
             'status' => $status,
             'blocked_reason' => $status === self::STATUS_BLOCKED ? $blockedReason : null,
             'message' => $message,
-            'certificate_mode' => $mode,
             'attendance_percent' => $attendancePercent,
             'score_percent' => $scorePercent,
-            'attendance_threshold' => $course->certificate_attendance_threshold,
-            'score_threshold' => $course->certificate_score_threshold,
+        ]);
+    }
+
+    /**
+     * The configured rule, in the wire shape the learner apps already expect.
+     *
+     * `certificate_mode` keeps its name for contract stability (Angular and
+     * mobile both read it) but now carries the Platform Config basis rather
+     * than the retired per-course column.
+     *
+     * @return array<string, mixed>
+     */
+    private function ruleShape(): array
+    {
+        return [
+            'certificate_mode'      => $this->policy->basis(),
+            'attendance_threshold'  => $this->policy->requires(CertificatePolicy::METRIC_ATTENDANCE)
+                ? $this->policy->minAttendance()
+                : null,
+            'score_threshold'       => $this->policy->requires(CertificatePolicy::METRIC_SCORE)
+                ? $this->policy->minScore()
+                : null,
         ];
     }
 
@@ -251,17 +281,14 @@ class CertificateProjectionService
         ];
     }
 
-    private function baseShape(Course $course): array
+    private function baseShape(): array
     {
-        return [
+        return array_merge($this->ruleShape(), [
             'blocked_reason' => null,
             'message' => null,
-            'certificate_mode' => $course->certificate_mode,
             'attendance_percent' => null,
             'score_percent' => null,
-            'attendance_threshold' => $course->certificate_attendance_threshold,
-            'score_threshold' => $course->certificate_score_threshold,
-        ];
+        ]);
     }
 
     /* ------------------------------------------------------------------ *

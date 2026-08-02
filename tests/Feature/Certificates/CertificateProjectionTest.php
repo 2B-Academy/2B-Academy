@@ -9,20 +9,24 @@ use App\Models\User;
 use App\Models\UserCertificate;
 use App\Models\UserExam;
 use App\Models\UsersCourse;
+use App\Services\CertificatePolicy;
 use App\Services\CertificateProjectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\ConfiguresCertificateRule;
 use Tests\TestCase;
 
 /**
  * Certificate status projection (On track / At risk / Blocked) — the
  * business logic behind the course-player's persistent certificate badge.
- * See CertificateProjectionService for the config this reads
- * (courses.certificate_mode / certificate_attendance_threshold /
- * certificate_score_threshold — new, confirmed-absent-before config).
+ *
+ * The rule comes from Platform Config via App\Services\CertificatePolicy, so
+ * each scenario configures it through {@see ConfiguresCertificateRule} rather
+ * than through per-course columns.
  */
 class CertificateProjectionTest extends TestCase
 {
     use RefreshDatabase;
+    use ConfiguresCertificateRule;
 
     private function service(): CertificateProjectionService
     {
@@ -40,6 +44,7 @@ class CertificateProjectionTest extends TestCase
 
     public function test_status_is_earned_when_a_certificate_already_exists(): void
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_SCORE, minScore: 60);
         $user = User::factory()->create();
         $course = Course::factory()->create(['certificate' => true]);
         UserCertificate::factory()->create(['user_id' => $user->id, 'course_id' => $course->id]);
@@ -52,11 +57,9 @@ class CertificateProjectionTest extends TestCase
 
     public function test_on_track_when_exam_not_yet_attempted_and_cohort_still_running(): void
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_SCORE, minScore: 60);
         $user = User::factory()->create();
-        $course = Course::factory()->create([
-            'certificate' => true,
-            'certificate_mode' => Course::CERTIFICATE_MODE_SCORE,
-        ]);
+        $course = Course::factory()->create(['certificate' => true]);
         $cohort = CourseSection::factory()->running()->create(['course_id' => $course->id]);
         $this->enrollInCohort($user, $course, $cohort);
 
@@ -68,12 +71,9 @@ class CertificateProjectionTest extends TestCase
 
     public function test_at_risk_when_score_is_below_threshold_but_cohort_still_running(): void
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_SCORE, minScore: 60);
         $user = User::factory()->create();
-        $course = Course::factory()->create([
-            'certificate' => true,
-            'certificate_mode' => Course::CERTIFICATE_MODE_SCORE,
-            'certificate_score_threshold' => 60,
-        ]);
+        $course = Course::factory()->create(['certificate' => true]);
         $cohort = CourseSection::factory()->running()->create(['course_id' => $course->id]);
         $this->enrollInCohort($user, $course, $cohort);
 
@@ -95,12 +95,9 @@ class CertificateProjectionTest extends TestCase
 
     public function test_blocked_with_score_reason_when_cohort_has_ended_below_threshold(): void
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_SCORE, minScore: 60);
         $user = User::factory()->create();
-        $course = Course::factory()->create([
-            'certificate' => true,
-            'certificate_mode' => Course::CERTIFICATE_MODE_SCORE,
-            'certificate_score_threshold' => 60,
-        ]);
+        $course = Course::factory()->create(['certificate' => true]);
         $cohort = CourseSection::factory()->create([
             'course_id' => $course->id,
             'start_date' => now()->subDays(60)->toDateString(),
@@ -129,12 +126,12 @@ class CertificateProjectionTest extends TestCase
 
     public function test_blocked_with_both_reason_when_attendance_and_score_both_fail(): void
     {
+        $this->configureCertificateRule(CertificatePolicy::BASIS_BOTH, minAttendance: 75, minScore: 60);
         $user = User::factory()->create();
         $course = Course::factory()->create([
             'certificate' => true,
-            'certificate_mode' => Course::CERTIFICATE_MODE_BOTH,
-            'certificate_attendance_threshold' => 75,
-            'certificate_score_threshold' => 60,
+            // A planned session count is what makes attendance measurable at
+            // all — without it the attendance requirement would be skipped.
             'number_of_sessions' => 10,
         ]);
         // Cohort deliberately has no `number_of_sessions` target of its own so

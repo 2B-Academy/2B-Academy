@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserCourseEvaluation;
 use App\Models\UserExam;
 use App\Models\UsersCourse;
+use App\Services\CertificatePolicy;
 use App\Services\CertificateService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -31,15 +32,25 @@ use Illuminate\Support\Facades\DB;
  * Idempotent: a learner+course that already has an active certificate is
  * skipped, so re-running never duplicates.
  *
+ * Grandfathered on purpose. The backfill goes through CertificateService's
+ * `backfill*` methods, which apply the legacy completion triggers WITHOUT
+ * the current Platform Config rule. These certificates were earned under the
+ * rules in force at the time and the dashboard has been displaying them ever
+ * since; re-judging them against today's thresholds would silently strip
+ * learners of certificates they already hold. New issuance still applies the
+ * rule in full — see CertificateService.
+ *
  * Options:
- *   --dry-run            Preview without writing.
- *   --employee=CODE      Limit to a single learner (users.machine_code).
+ *   --dry-run             Preview without writing.
+ *   --employee=CODE       Limit to a single learner (users.machine_code).
+ *   --include-attendance  Also sweep attendance-based eligibility (opt-in).
  */
 class MigrateExistingCertificates extends Command
 {
     protected $signature = 'certificates:migrate-existing
         {--dry-run : Show what would be issued without writing}
-        {--employee= : Limit to a single employee machine_code}';
+        {--employee= : Limit to a single employee machine_code}
+        {--include-attendance : Also mint attendance-based certificates for learners who meet the configured threshold}';
 
     protected $description = 'Backfill first-class user_certificates from historical exam/evaluation completions.';
 
@@ -85,8 +96,8 @@ class MigrateExistingCertificates extends Command
             }
 
             $certificate = $entry['kind'] === 'exam'
-                ? $certificates->issueFromExam($model)
-                : $certificates->issueFromEvaluation($model);
+                ? $certificates->backfillFromExam($model)
+                : $certificates->backfillFromEvaluation($model);
 
             if ($certificate === null) {
                 $skipped++;
@@ -96,11 +107,16 @@ class MigrateExistingCertificates extends Command
             $certificate->wasRecentlyCreated ? $created++ : $skipped++;
         }
 
-        // ── Attendance-based certificates ───────────────────────────────
-        // Session/offline courses whose certificate_mode includes attendance.
-        // issueFromAttendance self-checks the threshold, so we simply attempt
-        // every enrolment and count what actually mints.
-        $attendanceCandidates = $this->collectAttendanceCandidates($userId);
+        // ── Attendance-based certificates (opt-in) ──────────────────────
+        // This sweep can mint certificates that never existed in the legacy
+        // system — nobody was ever awarded one for attendance alone before
+        // this feature. That is a genuine business decision, not a data
+        // migration, so it stays behind a flag instead of firing as a side
+        // effect of restoring the historical set.
+        $attendanceCandidates = $this->option('include-attendance')
+            ? $this->collectAttendanceCandidates($userId)
+            : collect();
+
         foreach ($attendanceCandidates as [$user, $course]) {
             if ($dryRun) {
                 $this->line(sprintf('  [dry-run] attendance → user %d / course %d', (int) $user->id, (int) $course->id));
@@ -130,17 +146,23 @@ class MigrateExistingCertificates extends Command
     }
 
     /**
-     * Learner+course pairs enrolled in certificate courses whose mode grants a
-     * certificate by attendance (attendance | both). Issuance eligibility (the
-     * threshold) is decided inside CertificateService::issueFromAttendance.
+     * Learner+course pairs enrolled in certificate courses, for when the
+     * configured basis grades on attendance. The threshold itself is decided
+     * inside CertificateService::issueFromAttendance, which measures the
+     * learner and consults CertificatePolicy — so a learner with no
+     * attendance evidence simply mints nothing.
      *
      * @return \Illuminate\Support\Collection<int, array{0: User, 1: Course}>
      */
     private function collectAttendanceCandidates(?int $userId): \Illuminate\Support\Collection
     {
+        if (!app(CertificatePolicy::class)->requires(CertificatePolicy::METRIC_ATTENDANCE)) {
+            $this->warn('· Skipping attendance sweep — Platform Config awards certificates on score only.');
+            return collect();
+        }
+
         $courses = Course::query()
             ->where('certificate', true)
-            ->whereIn('certificate_mode', [Course::CERTIFICATE_MODE_ATTENDANCE, Course::CERTIFICATE_MODE_BOTH])
             ->get()
             ->keyBy('id');
 
@@ -175,21 +197,30 @@ class MigrateExistingCertificates extends Command
             })
             ->count();
 
-        $attendanceButNoMode = DB::table('courses')
-            ->where('certificate', true)
-            ->where(function ($q) {
-                $q->whereNull('certificate_mode')->orWhere('certificate_mode', Course::CERTIFICATE_MODE_SCORE);
-            })
-            ->whereExists(function ($q) {
-                $q->from('course_sessions')->whereColumn('course_sessions.course_id', 'courses.id');
-            })
-            ->count();
-
         if ($noFlag > 0) {
             $this->warn("· {$noFlag} enrolled course(s) have certificate=false — they will never issue a certificate until enabled.");
         }
-        if ($attendanceButNoMode > 0) {
-            $this->warn("· {$attendanceButNoMode} session course(s) have certificate=true but certificate_mode is score/unset — set certificate_mode='attendance' (or 'both') to certify by attendance.");
+
+        $policy = app(CertificatePolicy::class);
+        if (!$policy->requires(CertificatePolicy::METRIC_ATTENDANCE)) {
+            return;
+        }
+
+        // Attendance % is sessions-attended / sessions-planned. A course with
+        // no planned session count can never produce that number, so the
+        // attendance requirement is skipped for it (see CertificatePolicy).
+        $noSessionPlan = DB::table('courses')
+            ->where('certificate', true)
+            ->where(function ($q) {
+                $q->whereNull('number_of_sessions')->orWhere('number_of_sessions', '<=', 0);
+            })
+            ->whereExists(function ($q) {
+                $q->from('users_courses')->whereColumn('users_courses.course_id', 'courses.id');
+            })
+            ->count();
+
+        if ($noSessionPlan > 0) {
+            $this->warn("· {$noSessionPlan} enrolled course(s) have no planned session count — attendance cannot be measured for them, so the attendance requirement is skipped. Set courses.number_of_sessions (or the cohort's) to enforce it.");
         }
     }
 

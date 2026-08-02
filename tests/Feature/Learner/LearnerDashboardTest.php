@@ -7,6 +7,8 @@ use App\Models\CourseLecture;
 use App\Models\CourseSection;
 use App\Models\UserLectureProgress;
 use App\Models\UsersCourse;
+use App\Services\CertificatePolicy;
+use Tests\Concerns\ConfiguresCertificateRule;
 use Tests\Feature\Api\ApiTestCase;
 
 /**
@@ -16,14 +18,17 @@ use Tests\Feature\Api\ApiTestCase;
  */
 class LearnerDashboardTest extends ApiTestCase
 {
+    use ConfiguresCertificateRule;
+
     public function test_learnings_returns_composite_fields_per_course(): void
     {
         ['model' => $user, 'headers' => $headers] = $this->userToken();
 
+        $this->configureCertificateRule(CertificatePolicy::BASIS_SCORE, minScore: 60);
+
         $course = Course::factory()->create([
             'course_type' => 'blended',
             'certificate' => true,
-            'certificate_mode' => Course::CERTIFICATE_MODE_SCORE,
         ]);
         $cohort = CourseSection::factory()->running()->create([
             'course_id' => $course->id,

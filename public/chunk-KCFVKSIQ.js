@@ -1,0 +1,1 @@
+import"./chunk-4X36HX5K.js";var e=[{path:"",loadComponent:()=>import("./chunk-MHHI4N7H.js").then(t=>t.CourseDetailPageComponent),title:"feature.course_detail.title"}];export{e as COURSE_DETAIL_ROUTES};

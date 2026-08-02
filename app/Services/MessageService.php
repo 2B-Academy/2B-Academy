@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Events\MessageSent;
 use App\Models\Admin;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
@@ -106,7 +107,7 @@ final class MessageService
         $identities = $this->identities($principal);
         abort_if($this->participantRow($conversation, $identities) === null, 403);
 
-        return DB::transaction(function () use ($conversation, $principal, $body) {
+        $message = DB::transaction(function () use ($conversation, $principal, $body) {
             $message = $conversation->messages()->create([
                 'sender_type' => $principal::class,
                 'sender_id'   => $principal->getKey(),
@@ -117,6 +118,60 @@ final class MessageService
 
             return $message;
         });
+
+        $this->broadcastMessage($message, $conversation);
+
+        return $message;
+    }
+
+    /**
+     * Can `$principal` (under any of its cross-entity identities) read/reply
+     * to this conversation? Used by the broadcasting channel authorizer for
+     * `conversation.{id}` — mirrors the check `thread()`/`reply()` make.
+     */
+    public function isParticipant(Model $principal, Conversation $conversation): bool
+    {
+        return $this->participantRow($conversation, $this->identities($principal)) !== null;
+    }
+
+    /**
+     * Broadcast a just-created message to the conversation's live viewers
+     * (`conversation.{id}`) and every participant's inbox/unread badge
+     * (`identity.{type}.{id}`). Fire-and-forget: a broadcast failure (e.g.
+     * Reverb not running locally) must never fail the send itself.
+     */
+    private function broadcastMessage(Message $message, Conversation $conversation): void
+    {
+        try {
+            $sender = $this->resolveIdentity($message->sender_type, (int) $message->sender_id);
+
+            $channels = $conversation->participants
+                ->map(fn (ConversationParticipant $p) => sprintf(
+                    'identity.%s.%d',
+                    class_basename($p->participant_type),
+                    $p->participant_id,
+                ))
+                ->unique()
+                ->values()
+                ->all();
+
+            broadcast(new MessageSent(
+                conversationId: (int) $conversation->id,
+                channels: $channels,
+                payload: [
+                    'id'              => (int) $message->id,
+                    'conversation_id' => (int) $conversation->id,
+                    'body'            => $message->body,
+                    'sender_type'     => class_basename($message->sender_type),
+                    'sender_id'       => (int) $message->sender_id,
+                    'sender_name'     => $sender['name'] ?? '—',
+                    'created_at'      => optional($message->created_at)->toIso8601String(),
+                    'last_message_at' => optional($conversation->last_message_at)->toIso8601String(),
+                ],
+            ))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -130,8 +185,8 @@ final class MessageService
         $recipient = $recipientType::query()->find($recipientId);
         abort_if($recipient === null, 404);
 
-        return DB::transaction(function () use ($principal, $recipient, $recipientType, $recipientId, $courseId, $body, $subject) {
-            $conversation = $this->findExisting($principal, $recipientType, $recipientId, $courseId)
+        [$message, $conversation] = DB::transaction(function () use ($principal, $recipient, $recipientType, $recipientId, $courseId, $body, $subject) {
+            $conversation = $this->findExisting($principal, $recipient, $courseId)
                 ?? Conversation::create(['course_id' => $courseId, 'subject' => $subject, 'last_message_at' => now()]);
 
             $this->ensureParticipant($conversation, $principal::class, (int) $principal->getKey());
@@ -145,8 +200,12 @@ final class MessageService
 
             $conversation->update(['last_message_at' => now()]);
 
-            return $message;
+            return [$message, $conversation];
         });
+
+        $this->broadcastMessage($message, $conversation->fresh(['participants']));
+
+        return $message;
     }
 
     /**
@@ -388,12 +447,24 @@ final class MessageService
         ]);
     }
 
-    private function findExisting(Model $principal, string $recipientType, int $recipientId, ?int $courseId): ?Conversation
+    /**
+     * Match on the *identity sets* (cross-entity same-email accounts) of
+     * both sides, not the exact type/id pair used to send this message.
+     * The same physical person can hold both an Instructor and an Admin
+     * account (see `identities()`); a dashboard reply sent under one of
+     * those accounts must still land in the thread a message under the
+     * other account started, or "New Message" forks a duplicate thread
+     * for a person the learner is already talking to.
+     */
+    private function findExisting(Model $principal, Model $recipient, ?int $courseId): ?Conversation
     {
+        $mine   = $this->identities($principal);
+        $theirs = $this->identities($recipient);
+
         return Conversation::query()
             ->where('course_id', $courseId)
-            ->whereHas('participants', fn ($q) => $q->where('participant_type', $principal::class)->where('participant_id', $principal->getKey()))
-            ->whereHas('participants', fn ($q) => $q->where('participant_type', $recipientType)->where('participant_id', $recipientId))
+            ->whereHas('participants', fn ($q) => $this->scopeToIdentities($q, $mine))
+            ->whereHas('participants', fn ($q) => $this->scopeToIdentities($q, $theirs))
             ->first();
     }
 

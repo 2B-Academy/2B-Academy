@@ -246,7 +246,22 @@
       "Bash(ls -la \"/c/Users/ezz.ali/.claude/projects/D--2b-source-code-2b-academy-test/c06cb029-a6b6-477d-8c0f-30d747a5b179/tool-results/\" 2>&1 | head -50)",
       "Bash(curl -sL -o ic_medal.svg \"https://www.figma.com/api/mcp/asset/821a0720-f61b-4216-b596-d04267a602af\")",
       "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/587c8908-773e-4f2d-b095-e5d6a7ca16de\")",
-      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/2049224d-2402-4dab-92c4-b79edea23c9e\")"
+      "Bash(curl -sL \"https://www.figma.com/api/mcp/asset/2049224d-2402-4dab-92c4-b79edea23c9e\")",
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(php -l app/Services/CertificateService.php)",
+      "Bash(php artisan tinker '--execute= *)",
+      "Bash(ls \"F:/LMS-Angular\" 2>&1 | head -5; echo \"---\"; ls \"F:/LMS-Website\" 2>&1 | head -5)",
+      "Bash(git diff *)",
+      "Bash(xargs grep -liE \"conversation|unread\")",
+      "Bash(composer show *)",
+      "Bash(php -l app/Events/MessageSent.php)",
+      "Bash(php -l routes/channels.php)",
+      "Bash(php -l bootstrap/app.php)",
+      "Bash(npm -v)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/broadcasting/auth -H 'Authorization: Bearer 40|1ejOlqM7dMUQEE2I31mFHTjtYBk2ALbiVsqd61rRb364deb9' -H 'Accept: application/json' -d socket_id=123.456 -d channel_name=private-identity.Admin.4)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' -X POST http://127.0.0.1:8000/api/broadcasting/auth -H 'Authorization: Bearer 40|1ejOlqM7dMUQEE2I31mFHTjtYBk2ALbiVsqd61rRb364deb9' -H 'Accept: application/json' -d socket_id=123.456 -d channel_name=private-identity.Admin.999)",
+      "Bash(curl -s -o /dev/null -w 'conversation not participant: %{http_code}\\\\n' -X POST http://127.0.0.1:8000/api/broadcasting/auth -H 'Authorization: Bearer 40|1ejOlqM7dMUQEE2I31mFHTjtYBk2ALbiVsqd61rRb364deb9' -H 'Accept: application/json' -d socket_id=123.456 -d channel_name=private-conversation.1)"
     ]
   }
 }

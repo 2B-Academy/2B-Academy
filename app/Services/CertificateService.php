@@ -20,12 +20,21 @@ use Illuminate\Support\Facades\DB;
  * and revocation flow through this single service so the rules live in
  * exactly one place (never scattered across controllers).
  *
- * Issuance rules:
- *   A) final-exam pass  ? course.certificate && !course.is_evaluate
- *                         && exam.is_final && user_exam.status='success'
- *   B) evaluation done  ? course.certificate &&  course.is_evaluate
+ * Issuance is a completion TRIGGER plus the certificate RULE:
  *
- * Invariant: one learner + one course = one ACTIVE certificate.
+ *   Trigger A) final-exam pass  - course.certificate && !course.is_evaluate
+ *                                 && exam.is_final && user_exam.status='success'
+ *   Trigger B) evaluation done  - course.certificate &&  course.is_evaluate
+ *   Trigger C) attendance       - measurement is the trigger (no event)
+ *
+ *   Rule) App\Services\CertificatePolicy, read from Platform Config, is the
+ *         single source of truth for the thresholds every trigger must clear.
+ *
+ * Backfill is deliberately exempt from the rule — see {@see backfillFromExam}.
+ *
+ * Invariant: one learner + one course = one ACTIVE certificate. Enforced here
+ * inside a transaction AND by a unique index (see migration
+ * 2026_08_02_110000_add_unique_active_certificate_index).
  */
 class CertificateService
 {
@@ -41,9 +50,28 @@ class CertificateService
     /**
      * Issue a certificate for a passed final exam. Returns the existing
      * active certificate (idempotent) or null when the exam is not
-     * certificate-eligible.
+     * certificate-eligible or the learner does not clear the configured rule.
      */
     public function issueFromExam(UserExam $exam): ?UserCertificate
+    {
+        return $this->fromExam($exam, applyPolicy: true);
+    }
+
+    /**
+     * Grandfathered variant used by `certificates:migrate-existing`.
+     *
+     * Historical completions were earned under the rules in force at the
+     * time, and the production dashboard has been displaying them ever
+     * since. Re-judging them against today's Platform Config would silently
+     * delete certificates learners already hold, so the backfill materialises
+     * exactly the set the legacy triggers describe and skips the rule.
+     */
+    public function backfillFromExam(UserExam $exam): ?UserCertificate
+    {
+        return $this->fromExam($exam, applyPolicy: false);
+    }
+
+    private function fromExam(UserExam $exam, bool $applyPolicy): ?UserCertificate
     {
         $exam->loadMissing(['course', 'exam', 'user']);
 
@@ -57,6 +85,9 @@ class CertificateService
             return null;
         }
         if (!$examDef->is_final || $exam->status !== 'success') {
+            return null;
+        }
+        if ($applyPolicy && $exam->user && !$this->projection->satisfiesPolicy($exam->user, $course)) {
             return null;
         }
 
@@ -77,9 +108,21 @@ class CertificateService
 
     /**
      * Issue a certificate for a completed evaluation-based course.
-     * Idempotent; returns null when the course is not certificate-eligible.
+     * Idempotent; returns null when the course is not certificate-eligible
+     * or the learner does not clear the configured rule.
      */
     public function issueFromEvaluation(UserCourseEvaluation $evaluation): ?UserCertificate
+    {
+        return $this->fromEvaluation($evaluation, applyPolicy: true);
+    }
+
+    /** Grandfathered variant for the backfill — see {@see backfillFromExam}. */
+    public function backfillFromEvaluation(UserCourseEvaluation $evaluation): ?UserCertificate
+    {
+        return $this->fromEvaluation($evaluation, applyPolicy: false);
+    }
+
+    private function fromEvaluation(UserCourseEvaluation $evaluation, bool $applyPolicy): ?UserCertificate
     {
         $evaluation->loadMissing(['course', 'user']);
 
@@ -89,6 +132,9 @@ class CertificateService
             return null;
         }
         if (!$course->certificate || !$course->is_evaluate) {
+            return null;
+        }
+        if ($applyPolicy && $evaluation->user && !$this->projection->satisfiesPolicy($evaluation->user, $course)) {
             return null;
         }
 
@@ -107,9 +153,14 @@ class CertificateService
 
     /**
      * Issue a certificate for a session/offline course earned through
-     * attendance (and/or score, per the course's certificate_mode). Gated on
-     * the course offering a certificate AND the learner meeting every
-     * configured threshold. Idempotent; returns null when not yet eligible.
+     * attendance (and/or score, per the Platform Config basis). Gated on the
+     * course offering a certificate AND the learner meeting every configured
+     * threshold. Idempotent; returns null when not yet eligible.
+     *
+     * Unlike the exam/evaluation paths there is no completion event here —
+     * the measurement IS the trigger — so this requires real measured
+     * evidence (see CertificateProjectionService::meetsIssuanceCriteria).
+     * A course that cannot report attendance never mints from this path.
      *
      * This is the path that lets instructor-led / attendance-based courses
      * mint a real certificate — previously impossible, since issuance only

@@ -27,7 +27,10 @@ interface MobileAttendanceRepositoryInterface
      *   - session belongs to the user's cohort (users_courses.group_id)
      *   - session_date = today
      *   - now ∈ [time_from − openBuffer, time_to + graceBuffer]
-     *   - passcode is not yet expired
+     *
+     * Deliberately does NOT filter on passcode presence/expiry — that's
+     * a distinct failure mode (`ExpiredCode`/`NoOpenWindow`) the service
+     * layer needs to tell apart from "no session scheduled at all".
      */
     public function findOpenSessionForUser(
         User   $user,

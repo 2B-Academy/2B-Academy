@@ -24,7 +24,6 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         commands: __DIR__.'/../routes/console.php',
-        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
             // Web routes (frontend public)
@@ -45,6 +44,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
         },
+    )
+    // Broadcasting channel auth — registered separately (rather than via
+    // withRouting's `channels:` param) so it sits behind our own bearer-token
+    // `auth.user` middleware instead of the framework's default `web`
+    // session guard, matching how every other API route authenticates.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['prefix' => 'api', 'middleware' => ['api', 'auth.user']],
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Append custom middleware to the web group

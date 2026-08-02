@@ -1,0 +1,1 @@
+import"./chunk-EQDQRRRY.js";var e=[{path:"",loadComponent:()=>import("./chunk-O6SUZTWI.js").then(t=>t.CertificateListComponent),title:"Certificates \u2014 2B Academy"}];export{e as CERTIFICATES_ROUTES};

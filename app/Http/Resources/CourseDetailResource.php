@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\CourseRating;
 use App\Models\Setting;
+use App\Services\CertificatePolicy;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
@@ -31,11 +32,14 @@ class CourseDetailResource extends JsonResource
                 ->value('value') ?? 30);
         }
 
-        // The pass percent isn't stored per-course yet — surface the platform
-        // default so the certificate row can render "Yes — min 75%".
-        $passPercent = (int) (Setting::query()
-            ->where('key', 'min_passing_score')
-            ->value('value') ?? 0);
+        // Read the pass percent through the policy rather than the settings
+        // row directly, so this display can never drift from the threshold
+        // actually enforced at issuance. Null when the configured basis
+        // doesn't grade on score at all.
+        $policy = app(CertificatePolicy::class);
+        $passPercent = $policy->requires(CertificatePolicy::METRIC_SCORE)
+            ? $policy->minScore()
+            : null;
 
         $ratingCount       = (int) ($this->rating_count ?? 0);
         $ratingAverage     = $ratingCount > 0

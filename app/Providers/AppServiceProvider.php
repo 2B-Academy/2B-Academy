@@ -101,6 +101,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // The certificate rule is read from Platform Config on every
+        // eligibility check (badges, listings, issuance). Sharing one
+        // instance keeps that to a single settings query per request.
+        $this->app->singleton(\App\Services\CertificatePolicy::class);
+
         // Repository bindings — interface → Eloquent implementation
         $this->app->bind(CategoryRepositoryInterface::class,           CategoryRepository::class);
         $this->app->bind(CourseRepositoryInterface::class,             CourseRepository::class);

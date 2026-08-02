@@ -39,8 +39,11 @@ class PlatformConfigSeeder extends Seeder
             // ── Grading & Certificates ────────────────────────────────
             ['key' => 'course_ratings_enabled',     'value' => '1',  'type' => 'boolean', 'label' => 'Course Ratings',            'module' => $module],
             ['key' => 'abnormal_rating_threshold',  'value' => '30', 'type' => 'number',  'label' => 'Abnormal Rating Threshold', 'module' => $module],
+            // The certificate rule — read back by App\Services\CertificatePolicy,
+            // which is the single source of truth for certificate eligibility.
             // attendance | score | both
             ['key' => 'certificate_award_basis',    'value' => 'attendance', 'type' => 'text',   'label' => 'Certificate Awarded Based On', 'module' => $module],
+            ['key' => 'min_passing_attendance',     'value' => '70',         'type' => 'number', 'label' => 'Min Passing Attendance (%)',    'module' => $module],
             ['key' => 'min_passing_score',          'value' => '30',         'type' => 'number', 'label' => 'Min Passing Score (%)',         'module' => $module],
 
             // ── About Us (rich text + image) ──────────────────────────
