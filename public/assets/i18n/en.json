@@ -95,7 +95,8 @@
         "helper": "Having trouble? Contact your system administrator.",
         "show_password": "Show password",
         "hide_password": "Hide password",
-        "brand_title": "Track your skills progress",
+        "brand_line1": "Grow your team's skills.",
+        "brand_line2": "Track what matters.",
         "brand_subtitle": "NAS Learning Management System",
         "invalid_credentials": "The email or password you entered is incorrect.",
         "email_invalid": "Enter a valid email address."
